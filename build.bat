@@ -5,6 +5,23 @@ setlocal enabledelayedexpansion
 cd /d "%~dp0"
 
 echo ========================================
+echo  Cleaning Output Directories
+echo ========================================
+echo.
+
+:: Delete dist and docs folders if they exist
+if exist "%~dp0dist" (
+    echo Deleting existing dist directory...
+    rmdir /s /q "%~dp0dist"
+)
+
+if exist "%~dp0docs" (
+    echo Deleting existing docs directory...
+    rmdir /s /q "%~dp0docs"
+)
+
+echo.
+echo ========================================
 echo  Building Angular Application
 echo ========================================
 echo.
@@ -31,13 +48,7 @@ if not exist "!SOURCE_DIR!" (
     exit /b 1
 )
 
-:: Clean existing docs directory if present to remove stale files
-if exist "!TARGET_DIR!" (
-    echo Cleaning existing docs directory...
-    rmdir /s /q "!TARGET_DIR!"
-)
-
-echo Creating docs directory...
+echo Creating fresh docs directory...
 mkdir "!TARGET_DIR!"
 
 echo Copying browser build files from !SOURCE_DIR! to !TARGET_DIR!...
@@ -47,9 +58,48 @@ if %ERRORLEVEL% NEQ 0 (
     exit /b %ERRORLEVEL%
 )
 
+:: Copy index.html to 404.html to support SPA routing (e.g. on GitHub Pages)
+if exist "!TARGET_DIR!\index.html" (
+    copy /Y "!TARGET_DIR!\index.html" "!TARGET_DIR!\404.html" > nul
+)
+
 echo.
 echo ========================================
-echo  Build and Copy Completed Successfully!
+echo  Committing docs to Git
+echo ========================================
+echo.
+
+:: Get current date and time
+for /f "tokens=*" %%i in ('powershell -NoProfile -Command "Get-Date -Format 'yyyy-MM-dd HH:mm:ss'"') do set "BUILD_DATETIME=%%i"
+
+:: Stage all changes from docs
+git add docs
+
+:: Commit changes if any staged
+git diff --cached --quiet
+if %ERRORLEVEL% NEQ 0 (
+    git commit -m "build: !BUILD_DATETIME!"
+    echo Committed docs changes with message: "build: !BUILD_DATETIME!"
+) else (
+    echo No changes in docs to commit.
+)
+
+echo.
+echo ========================================
+echo  Pushing to Remote Repository
+echo ========================================
+echo.
+
+git push
+if %ERRORLEVEL% NEQ 0 (
+    echo [WARNING] Git push failed. Please check your network or repository permissions.
+) else (
+    echo Successfully pushed to remote!
+)
+
+echo.
+echo ========================================
+echo  Build, Copy, Commit and Push Completed!
 echo ========================================
 echo Output files are ready in: !TARGET_DIR!
 echo.
