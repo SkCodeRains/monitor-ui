@@ -1,0 +1,432 @@
+import { Injectable, inject, signal, computed, effect } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
+import { environment } from '../../environments/environment';
+import { MonitorItem, ApiResponse } from '../models/monitor-item.model';
+import { ToastService } from './toast.service';
+import { WebSocketService, WebSocketEvent } from './websocket.service';
+import { TrashService } from './trash.service';
+import { AuthService } from './auth.service';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class MonitorService {
+  private readonly http = inject(HttpClient);
+  private readonly toast = inject(ToastService);
+  private readonly trash = inject(TrashService);
+  readonly auth = inject(AuthService);
+  readonly wsService = inject(WebSocketService);
+  private readonly apiUrl = environment.apiUrl;
+
+  // Primary reactive state using Angular 22 Signals
+  readonly items = signal<MonitorItem[]>([]);
+  readonly selectedIds = signal<Set<string>>(new Set<string>());
+  readonly isLoading = signal<boolean>(false);
+  readonly isSaving = signal<boolean>(false);
+  readonly searchTerm = signal<string>('');
+  readonly isBackendOnline = signal<boolean>(true);
+  readonly lastSynced = signal<Date | null>(null);
+  readonly isAutoRefreshEnabled = signal<boolean>(false);
+  private pollingTimer: any = null;
+
+  // Computed signals
+  readonly totalCount = computed(() => this.items().length);
+
+  readonly selectedCount = computed(() => this.selectedIds().size);
+
+  readonly filteredItems = computed(() => {
+    const term = this.searchTerm().trim().toLowerCase();
+    const all = this.items();
+    if (!term) return all;
+
+    return all.filter(item => {
+      const idMatch = item.id.toLowerCase().includes(term);
+      const eventTypeMatch = (item.eventType || '').toLowerCase().includes(term);
+      const sourceMatch = (item.source || '').toLowerCase().includes(term);
+      const dataString = typeof item.data === 'string' ? item.data : JSON.stringify(item.data);
+      const dataMatch = dataString.toLowerCase().includes(term);
+      const payloadString = typeof item.payload === 'string' ? item.payload : JSON.stringify(item.payload);
+      const payloadMatch = payloadString.toLowerCase().includes(term);
+      const dateMatch = item.createdAt.toLowerCase().includes(term);
+      return idMatch || eventTypeMatch || sourceMatch || dataMatch || payloadMatch || dateMatch;
+    });
+  });
+
+  readonly isAllSelected = computed(() => {
+    const visible = this.filteredItems();
+    if (visible.length === 0) return false;
+    const selected = this.selectedIds();
+    return visible.every(item => selected.has(item.id));
+  });
+
+  readonly isSomeSelected = computed(() => {
+    const visible = this.filteredItems();
+    if (visible.length === 0) return false;
+    const selected = this.selectedIds();
+    const count = visible.filter(item => selected.has(item.id)).length;
+    return count > 0 && count < visible.length;
+  });
+
+  constructor() {
+    // Initial fetch if user is authenticated
+    if (this.auth.isAuthenticated()) {
+      this.loadItems();
+    }
+
+    // Effect: on auth token change, reload items & reconnect WS
+    effect(() => {
+      const token = this.auth.token();
+      if (token) {
+        this.wsService.authenticate(token);
+        this.loadItems(true);
+      } else {
+        this.items.set([]);
+      }
+    });
+
+    // Listen to real-time events streamed from WebSocket
+    this.wsService.events$.subscribe((event: WebSocketEvent) => {
+      this.handleWebSocketEvent(event);
+    });
+  }
+
+  /**
+   * Handle incoming WebSocket events in real-time
+   */
+  private handleWebSocketEvent(event: WebSocketEvent): void {
+    switch (event.type) {
+      case 'INITIAL_STATE':
+        if (Array.isArray(event.data)) {
+          this.items.set(event.data);
+          this.lastSynced.set(new Date());
+          this.isBackendOnline.set(true);
+        }
+        break;
+
+      case 'ITEM_ADDED':
+        if (event.item && event.item.id) {
+          this.items.update(current => {
+            const exists = current.some(i => i.id === event.item.id);
+            if (!exists) {
+              return [event.item, ...current];
+            }
+            return current.map(i => i.id === event.item.id ? event.item : i);
+          });
+          this.lastSynced.set(new Date());
+          this.isBackendOnline.set(true);
+        }
+        break;
+
+      case 'ITEM_DELETED':
+        if (event.id) {
+          const deletedId = event.id;
+          const targetItem = this.items().find(i => i.id === deletedId);
+          if (targetItem) {
+            this.trash.moveToTrash(targetItem);
+          }
+          this.items.update(current => current.filter(i => i.id !== deletedId));
+          this.selectedIds.update(current => {
+            const next = new Set(current);
+            next.delete(deletedId);
+            return next;
+          });
+          this.lastSynced.set(new Date());
+        }
+        break;
+
+      case 'ALL_DELETED':
+        if (this.items().length > 0) {
+          this.trash.moveToTrash(this.items());
+        }
+        this.items.set([]);
+        this.selectedIds.set(new Set());
+        this.lastSynced.set(new Date());
+        break;
+
+      default:
+        break;
+    }
+  }
+
+  /**
+   * Toggle 1-second auto polling interval
+   */
+  toggleAutoRefresh(): void {
+    const next = !this.isAutoRefreshEnabled();
+    this.isAutoRefreshEnabled.set(next);
+    if (next) {
+      this.startPolling();
+      this.toast.info('Auto-Sync Active', 'Polling backend every 1 second.');
+    } else {
+      this.stopPolling();
+      this.toast.info('Auto-Sync Stopped', 'Switched back to manual refresh.');
+    }
+  }
+
+  private startPolling(): void {
+    this.stopPolling();
+    this.pollingTimer = setInterval(() => {
+      if (this.auth.isAuthenticated() && !this.isLoading()) {
+        this.loadItems(true); // silent background fetch
+      }
+    }, 1000);
+  }
+
+  private stopPolling(): void {
+    if (this.pollingTimer) {
+      clearInterval(this.pollingTimer);
+      this.pollingTimer = null;
+    }
+  }
+
+  /**
+   * Fetch all items from GET /api/data
+   */
+  async loadItems(silent = false): Promise<void> {
+    if (!this.auth.isAuthenticated()) {
+      return;
+    }
+
+    if (!silent) {
+      this.isLoading.set(true);
+    }
+
+    try {
+      const response = await firstValueFrom(
+        this.http.get<ApiResponse<MonitorItem[]>>(`${this.apiUrl}/data`)
+      );
+
+      if (response && response.success && Array.isArray(response.data)) {
+        this.items.set(response.data);
+        this.isBackendOnline.set(true);
+        this.lastSynced.set(new Date());
+
+        const validIds = new Set(response.data.map(i => i.id));
+        this.selectedIds.update(current => {
+          const next = new Set<string>();
+          current.forEach(id => {
+            if (validIds.has(id)) next.add(id);
+          });
+          return next;
+        });
+
+        if (!silent) {
+          this.toast.success('Refreshed', `Synced ${response.data.length} telemetry item(s).`);
+        }
+      }
+    } catch (err: any) {
+      this.isBackendOnline.set(false);
+      console.error('Error fetching items:', err);
+      if (!silent) {
+        if (err.status === 401 || err.status === 403) {
+          this.auth.logout(false);
+        } else {
+          this.toast.error(
+            'Connection Error',
+            `Cannot reach backend server at ${this.apiUrl}. Please verify server is running.`
+          );
+        }
+      }
+    } finally {
+      if (!silent) {
+        this.isLoading.set(false);
+      }
+    }
+  }
+
+
+  /**
+   * Post new item to POST /api/data (Public)
+   */
+  async createItem(dataPayload: any): Promise<boolean> {
+    if (dataPayload === undefined || dataPayload === null || (typeof dataPayload === 'string' && dataPayload.trim() === '')) {
+      this.toast.warning('Validation', 'Data cannot be empty.');
+      return false;
+    }
+
+    const bodyToSend = typeof dataPayload === 'object' ? dataPayload : { data: dataPayload };
+
+    this.isSaving.set(true);
+    try {
+      const response = await firstValueFrom(
+        this.http.post<ApiResponse<MonitorItem>>(`${this.apiUrl}/data`, bodyToSend)
+      );
+
+      if (response && response.success && response.item) {
+        this.items.update(current => {
+          const exists = current.some(i => i.id === response.item!.id);
+          return exists ? current : [response.item!, ...current];
+        });
+        this.toast.success('Created', 'New event tile added to the stream.');
+        this.lastSynced.set(new Date());
+        return true;
+      } else {
+        this.toast.error('Failed', response.message || 'Could not save item.');
+        return false;
+      }
+    } catch (err: any) {
+      console.error('Error creating item:', err);
+      this.toast.error('Error', err?.error?.error || 'Failed to communicate with server.');
+      return false;
+    } finally {
+      this.isSaving.set(false);
+    }
+  }
+
+  /**
+   * Delete item by ID via DELETE /api/data/:id
+   */
+  async deleteItem(id: string): Promise<boolean> {
+    const itemToDelete = this.items().find(i => i.id === id);
+
+    try {
+      const response = await firstValueFrom(
+        this.http.delete<ApiResponse<any>>(`${this.apiUrl}/data/${id}`)
+      );
+
+      if (response && response.success) {
+        if (itemToDelete) {
+          this.trash.moveToTrash(itemToDelete);
+        }
+        this.items.update(current => current.filter(item => item.id !== id));
+        this.selectedIds.update(current => {
+          const next = new Set(current);
+          next.delete(id);
+          return next;
+        });
+        this.toast.info('Deleted', `Item removed from server and saved in Trash.`);
+        this.lastSynced.set(new Date());
+        return true;
+      }
+      return false;
+    } catch (err: any) {
+      console.error(`Error deleting item ${id}:`, err);
+      if (err.status === 401 || err.status === 403) {
+        this.auth.logout(false);
+      } else {
+        this.toast.error('Delete Failed', err?.error?.error || 'Could not delete item.');
+      }
+      return false;
+    }
+  }
+
+  /**
+   * Delete all currently selected items
+   */
+  async deleteSelected(): Promise<void> {
+    const ids = Array.from(this.selectedIds());
+    if (ids.length === 0) return;
+
+    const itemsToDelete = this.items().filter(i => this.selectedIds().has(i.id));
+
+    this.isLoading.set(true);
+    let successCount = 0;
+
+    for (const id of ids) {
+      try {
+        const response = await firstValueFrom(
+          this.http.delete<ApiResponse<any>>(`${this.apiUrl}/data/${id}`)
+        );
+        if (response && response.success) {
+          successCount++;
+        }
+      } catch (err) {
+        console.error(`Failed to delete item ${id}:`, err);
+      }
+    }
+
+    if (itemsToDelete.length > 0) {
+      this.trash.moveToTrash(itemsToDelete);
+    }
+
+    await this.loadItems(true);
+    this.selectedIds.set(new Set());
+    this.isLoading.set(false);
+    this.toast.success('Bulk Delete', `Deleted ${successCount} selected item(s) and moved to Trash.`);
+  }
+
+  /**
+   * Delete all items via DELETE /api/data/all
+   */
+  async deleteAll(): Promise<boolean> {
+    const allItems = [...this.items()];
+    this.isLoading.set(true);
+
+    try {
+      const response = await firstValueFrom(
+        this.http.delete<ApiResponse<any>>(`${this.apiUrl}/data/all`)
+      );
+
+      if (response && response.success) {
+        if (allItems.length > 0) {
+          this.trash.moveToTrash(allItems);
+        }
+        this.items.set([]);
+        this.selectedIds.set(new Set());
+        this.toast.warning('Store Cleared', `Deleted all items from server and archived in Trash.`);
+        this.lastSynced.set(new Date());
+        return true;
+      }
+      return false;
+    } catch (err: any) {
+      console.error('Error clearing data:', err);
+      if (err.status === 401 || err.status === 403) {
+        this.auth.logout(false);
+      } else {
+        this.toast.error('Failed', err?.error?.error || 'Could not clear data array.');
+      }
+      return false;
+    } finally {
+      this.isLoading.set(false);
+    }
+  }
+
+  /**
+   * Restore an item from Trash back into the live server array
+   */
+  async restoreFromTrash(item: MonitorItem): Promise<boolean> {
+    const success = await this.createItem(item);
+    if (success) {
+      this.trash.removeFromTrash(item.id);
+      this.toast.success('Restored', `Item restored back to the live server array!`);
+      return true;
+    }
+    return false;
+  }
+
+  toggleSelectItem(id: string): void {
+    this.selectedIds.update(current => {
+      const next = new Set(current);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
+  toggleSelectAll(): void {
+    const visible = this.filteredItems();
+    const allSelected = this.isAllSelected();
+
+    this.selectedIds.update(current => {
+      const next = new Set(current);
+      if (allSelected) {
+        visible.forEach(item => next.delete(item.id));
+      } else {
+        visible.forEach(item => next.add(item.id));
+      }
+      return next;
+    });
+  }
+
+  clearSelection(): void {
+    this.selectedIds.set(new Set());
+  }
+
+  setSearchTerm(term: string): void {
+    this.searchTerm.set(term);
+  }
+}

@@ -1,0 +1,19 @@
+.app-layout {
+  min-height: 100vh;
+  padding: 24px 16px;
+  display: flex;
+  justify-content: center;
+}
+
+.app-container {
+  width: 100%;
+  max-width: 1280px;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 768px) {
+  .app-layout {
+    padding: 12px 8px;
+  }
+}

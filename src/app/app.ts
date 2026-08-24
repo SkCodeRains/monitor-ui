@@ -1,12 +1,15 @@
-import { Component, signal } from '@angular/core';
+import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { ToastComponent } from './components/toast/toast.component';
 
 @Component({
-  imports: [RouterOutlet],
   selector: 'app-root',
-  styleUrl: './app.scss',
-  templateUrl: './app.html',
+  standalone: true,
+  imports: [RouterOutlet, ToastComponent],
+  template: `
+    <router-outlet />
+    <app-toast />
+  `,
+  styleUrl: './app.scss'
 })
-export class App {
-  protected readonly title = signal('monitor-ui');
-}
+export class App {}
