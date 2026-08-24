@@ -7,7 +7,6 @@ import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-header',
-  standalone: true,
   imports: [CommonModule, RouterLink, RouterLinkActive],
   template: `
     <header class="app-header glass-panel">
@@ -82,24 +81,32 @@ import { AuthService } from '../../services/auth.service';
 
           <!-- Auth User Info / Sign In -->
           @if (authService.isAuthenticated()) {
-            <div class="user-pill">
+            <div class="user-pill" title="Signed in user">
               <div class="user-avatar">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                   <circle cx="12" cy="7" r="4"></circle>
                 </svg>
               </div>
-              <span class="user-email">{{ authService.currentUser()?.email }}</span>
-              <button type="button" class="btn-logout" (click)="authService.logout()" title="Sign Out">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                  <polyline points="16 17 21 12 16 7"></polyline>
-                  <line x1="21" y1="12" x2="9" y2="12"></line>
-                </svg>
-              </button>
+              <span class="user-email">{{ authService.currentUser()?.email || 'Admin' }}</span>
             </div>
+
+            <button 
+              type="button" 
+              class="btn-logout" 
+              (click)="authService.logout()" 
+              title="Sign Out of Dashboard"
+              aria-label="Sign Out"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+              </svg>
+              <span class="logout-text">Logout</span>
+            </button>
           } @else {
-            <a routerLink="/login" class="btn-signin">
+            <a routerLink="/login" class="btn-signin" title="Sign In to Dashboard">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                 <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
                 <polyline points="10 17 15 12 10 7"></polyline>
@@ -278,28 +285,32 @@ import { AuthService } from '../../services/auth.service';
     }
 
     .user-pill {
-      display: flex;
+      display: inline-flex;
       align-items: center;
-      gap: 8px;
-      padding: 4px 8px 4px 6px;
-      background: rgba(30, 41, 59, 0.6);
+      gap: 7px;
+      padding: 4px 10px 4px 6px;
+      background: rgba(30, 41, 59, 0.65);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-full);
+      max-width: 200px;
     }
 
     .user-avatar {
-      width: 24px;
-      height: 24px;
+      width: 22px;
+      height: 22px;
       border-radius: 50%;
-      background: rgba(59, 130, 246, 0.2);
-      color: var(--accent-primary);
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(139, 92, 246, 0.3));
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      color: #93c5fd;
       display: flex;
       align-items: center;
       justify-content: center;
+      flex-shrink: 0;
     }
 
     .user-email {
       font-size: 12px;
+      font-weight: 500;
       color: var(--text-primary);
       max-width: 140px;
       white-space: nowrap;
@@ -308,17 +319,33 @@ import { AuthService } from '../../services/auth.service';
     }
 
     .btn-logout {
-      background: transparent;
-      color: var(--text-muted);
-      padding: 4px;
-      border-radius: 4px;
-      display: flex;
+      display: inline-flex;
       align-items: center;
-      justify-content: center;
+      gap: 6px;
+      background: rgba(244, 63, 94, 0.12);
+      color: #fb7185;
+      border: 1px solid rgba(244, 63, 94, 0.3);
+      padding: 6px 12px;
+      border-radius: var(--radius-md);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
 
       &:hover {
-        color: var(--accent-rose);
-        background: rgba(244, 63, 94, 0.15);
+        background: rgba(244, 63, 94, 0.25);
+        border-color: rgba(244, 63, 94, 0.5);
+        color: #ffe4e6;
+        box-shadow: 0 2px 10px rgba(244, 63, 94, 0.35);
+        transform: translateY(-1px);
+      }
+
+      &:active {
+        transform: translateY(0);
+      }
+
+      .logout-text {
+        display: inline;
       }
     }
 

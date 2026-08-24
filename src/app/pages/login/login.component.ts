@@ -6,7 +6,6 @@ import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-login-page',
-  standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
     <div class="login-page">
@@ -305,8 +304,8 @@ export class LoginComponent implements OnInit {
   readonly authService = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
 
-  email: string = 'skcoderains@gmail.com';
-  password: string = 'CodeR@ins69';
+  email: string = '';
+  password: string = '';
   readonly showPassword = signal<boolean>(false);
   private returnUrl: string = '/dashboard';
 
@@ -315,8 +314,8 @@ export class LoginComponent implements OnInit {
   }
 
   quickFill(): void {
-    this.email = 'skcoderains@gmail.com';
-    this.password = 'CodeR@ins69';
+    this.email = '';
+    this.password = '';
   }
 
   async onSubmit(): Promise<void> {
