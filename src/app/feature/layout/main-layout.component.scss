@@ -1,0 +1,23 @@
+.main-layout {
+  min-height: 100vh;
+  padding: 24px 16px;
+  display: flex;
+  justify-content: center;
+}
+
+.layout-container {
+  width: 100%;
+  max-width: 1280px;
+  display: flex;
+  flex-direction: column;
+}
+
+.content-area {
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .main-layout {
+    padding: 12px 8px;
+  }
+}

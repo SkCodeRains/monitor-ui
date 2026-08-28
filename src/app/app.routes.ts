@@ -1,18 +1,18 @@
 import { Routes } from '@angular/router';
-import { authGuard, guestGuard } from './guards/auth.guard';
+import { authGuard, guestGuard } from '@core/guards/auth.guard';
 
 export const routes: Routes = [
   // Public Login Route
   {
     path: 'login',
-    loadComponent: () => import('./pages/login/login.component').then(m => m.LoginComponent),
+    loadComponent: () => import('@feature/login/login.component').then(m => m.LoginComponent),
     canActivate: [guestGuard]
   },
 
   // Authenticated Main Layout Shell with Nested Child Routes
   {
     path: '',
-    loadComponent: () => import('./layouts/main-layout/main-layout.component').then(m => m.MainLayoutComponent),
+    loadComponent: () => import('@feature/layout/main-layout.component').then(m => m.MainLayoutComponent),
     canActivate: [authGuard],
     children: [
       {
@@ -22,11 +22,11 @@ export const routes: Routes = [
       },
       {
         path: 'dashboard',
-        loadComponent: () => import('./pages/dashboard/dashboard.component').then(m => m.DashboardComponent)
+        loadComponent: () => import('@feature/dashboard/dashboard.component').then(m => m.DashboardComponent)
       },
       {
         path: 'trash',
-        loadComponent: () => import('./pages/trash/trash.component').then(m => m.TrashComponent)
+        loadComponent: () => import('@feature/trash/trash.component').then(m => m.TrashComponent)
       }
     ]
   },

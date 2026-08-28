@@ -1,0 +1,95 @@
+<div class="trash-page animate-fade-in">
+  <!-- Header Banner -->
+  <div class="trash-header-banner glass-panel">
+    <div class="header-left">
+      <div class="trash-badge-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        </svg>
+      </div>
+      <div>
+        <h2 class="title">Browser Trash Vault</h2>
+        <p class="subtitle">
+          Locally archived deleted items on this browser. Deleted items here are not visible on other devices.
+        </p>
+      </div>
+    </div>
+
+    <div class="header-right">
+      <div class="count-pill">
+        <span class="count">{{ trashService.trashCount() }}</span> item(s) in trash
+      </div>
+
+      @if (trashService.trashCount() > 0) {
+        <button type="button" class="btn-empty" (click)="trashService.emptyTrash()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+          <span>Empty Trash</span>
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- Trash Grid -->
+  @if (trashService.trashCount() === 0) {
+    <div class="empty-state glass-panel animate-fade-in">
+      <div class="empty-icon">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        </svg>
+      </div>
+      <h3 class="empty-title">Trash is Empty</h3>
+      <p class="empty-desc">Deleted items from the live stream dashboard will be safely saved in this local browser vault.</p>
+    </div>
+  } @else {
+    <div class="trash-grid">
+      @for (item of trashService.trashItems(); track item.id + item.deletedAt) {
+        <div class="trash-card glass-panel animate-fade-in">
+          <!-- Top bar -->
+          <div class="card-top">
+            <div class="top-left">
+              <span class="id-pill">ID: {{ item.id }}</span>
+              @if (item.eventType) {
+                <span class="tag-event">{{ item.eventType }}</span>
+              }
+              @if (item.source) {
+                <span class="tag-source">{{ item.source }}</span>
+              }
+            </div>
+            <span class="deleted-time" [title]="item.deletedAt">
+              Deleted {{ item.deletedAt | timeAgo }}
+            </span>
+          </div>
+
+          <!-- Payload Viewer -->
+          <div class="data-block">
+            <pre class="data-code"><code>{{ displayPayload(item) | prettyJson }}</code></pre>
+          </div>
+
+          <!-- Actions -->
+          <div class="card-actions">
+            <button type="button" class="btn-restore" (click)="restoreItem(item)" title="Restore back to live server">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="1 4 1 10 7 10"></polyline>
+                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+              </svg>
+              <span>Restore to Live</span>
+            </button>
+
+            <button type="button" class="btn-perm-delete" (click)="trashService.deletePermanently(item.id)" title="Delete permanently from browser storage">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+              <span>Remove</span>
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

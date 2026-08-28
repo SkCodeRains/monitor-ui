@@ -1,0 +1,82 @@
+<div 
+  class="tile-card glass-panel" 
+  [class.selected]="isSelected()"
+  (click)="onCardClick($event)"
+>
+  <!-- Card Top Bar -->
+  <div class="card-header">
+    <div class="header-left">
+      <!-- Selection Checkbox -->
+      <label class="custom-checkbox" (click)="$event.stopPropagation()">
+        <input 
+          type="checkbox" 
+          [checked]="isSelected()"
+          (change)="monitorService.toggleSelectItem(item().id)"
+        >
+        <span class="checkmark"></span>
+      </label>
+
+      <!-- Unique ID Pill -->
+      <button 
+        type="button" 
+        class="id-badge" 
+        (click)="copyId($event)" 
+        title="Click to copy ID: {{ item().id }}"
+      >
+        <span class="id-text">ID: {{ formatDisplayId(item().id) }}</span>
+        <svg class="copy-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Date & Delete Action -->
+    <div class="header-right">
+      <span class="timestamp-badge" [title]="item().createdAt">
+        {{ item().createdAt | timeAgo }}
+      </span>
+
+      <button 
+        type="button" 
+        class="btn-delete-card" 
+        (click)="onDelete($event)" 
+        title="Delete this tile from array"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Event Tags (if eventType or source present) -->
+  @if (item().eventType || item().source) {
+    <div class="event-meta-tags">
+      @if (item().eventType) {
+        <span class="tag-event" [class]="'event-' + item().eventType?.toLowerCase()">
+          {{ item().eventType }}
+        </span>
+      }
+      @if (item().source) {
+        <span class="tag-source">
+          {{ item().source }}
+        </span>
+      }
+    </div>
+  }
+
+  <!-- Card Data Content -->
+  <div class="card-content">
+    <div class="data-block">
+      <div class="data-header">
+        <span class="data-type-label">{{ isJson() ? 'Payload / JSON' : 'Raw Content' }}</span>
+        <button type="button" class="btn-copy-data" (click)="copyData($event)">
+          {{ copied() ? 'Copied!' : 'Copy Payload' }}
+        </button>
+      </div>
+      <pre class="data-code"><code>{{ displayPayload() | prettyJson }}</code></pre>
+    </div>
+  </div>
+</div>

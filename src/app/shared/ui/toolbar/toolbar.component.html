@@ -1,0 +1,125 @@
+<div class="toolbar glass-panel">
+  <!-- Left side: Select all & Bulk actions -->
+  <div class="toolbar-left">
+    <label class="checkbox-container" title="Select / Deselect all visible items">
+      <input 
+        type="checkbox" 
+        [checked]="monitorService.isAllSelected()"
+        [indeterminate]="monitorService.isSomeSelected()"
+        (change)="monitorService.toggleSelectAll()"
+        [disabled]="monitorService.filteredItems().length === 0"
+      >
+      <span class="checkmark"></span>
+      <span class="checkbox-label">
+        {{ monitorService.isAllSelected() ? 'Deselect All' : 'Select All' }}
+      </span>
+    </label>
+
+    @if (monitorService.selectedCount() > 0) {
+      <div class="selection-pill animate-fade-in">
+        <span class="count">{{ monitorService.selectedCount() }}</span> selected
+      </div>
+
+      <button 
+        type="button" 
+        class="btn-action btn-delete-selected animate-fade-in"
+        (click)="onDeleteSelected()"
+        [disabled]="monitorService.isLoading()"
+        title="Delete all checked items"
+      >
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        </svg>
+        <span>Delete Selected ({{ monitorService.selectedCount() }})</span>
+      </button>
+    }
+  </div>
+
+  <!-- Right side: Refresh, Auto-Sync, Search & Delete All -->
+  <div class="toolbar-right">
+    <!-- Manual Refresh Button -->
+    <button 
+      type="button" 
+      class="btn-action btn-refresh"
+      (click)="onRefresh()"
+      [disabled]="monitorService.isLoading()"
+      title="Refresh / Fetch latest telemetry data from server"
+    >
+      <svg [class.spin]="monitorService.isLoading()" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+      </svg>
+      <span>{{ monitorService.isLoading() ? 'Refreshing...' : 'Refresh' }}</span>
+    </button>
+
+    <!-- Auto-Polling Toggle -->
+    <button 
+      type="button" 
+      class="btn-action btn-auto-refresh"
+      [class.active]="monitorService.isAutoRefreshEnabled()"
+      (click)="monitorService.toggleAutoRefresh()"
+      title="Toggle 10-second background auto-polling"
+    >
+      <span class="live-indicator" [class.pulse]="monitorService.isAutoRefreshEnabled()"></span>
+      <span>Auto (10s)</span>
+    </button>
+
+    <!-- Filter Search Box -->
+    <div class="search-box">
+      <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+      <input 
+        type="text" 
+        placeholder="Filter tiles by ID or content..."
+        [ngModel]="monitorService.searchTerm()"
+        (ngModelChange)="monitorService.setSearchTerm($event)"
+      >
+      @if (monitorService.searchTerm()) {
+        <button type="button" class="btn-clear-search" (click)="monitorService.setSearchTerm('')">
+          &times;
+        </button>
+      }
+    </div>
+
+    <!-- Delete All Button -->
+    <button 
+      type="button" 
+      class="btn-action btn-delete-all"
+      (click)="confirmDeleteAll()"
+      [disabled]="monitorService.totalCount() === 0 || monitorService.isLoading()"
+      title="Clear all stored items from server array"
+    >
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"></path>
+      </svg>
+      <span>Delete All</span>
+    </button>
+  </div>
+</div>
+
+<!-- Confirm Delete All Modal -->
+@if (showConfirmModal()) {
+  <div class="modal-overlay animate-fade-in" (click)="showConfirmModal.set(false)">
+    <div class="modal-card glass-panel" (click)="$event.stopPropagation()">
+      <div class="modal-icon danger">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+          <line x1="12" y1="9" x2="12" y2="13"></line>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+      </div>
+      <h3 class="modal-title">Delete All Items?</h3>
+      <p class="modal-desc">
+        This will permanently remove all <strong>{{ monitorService.totalCount() }}</strong> item(s) from the server's static in-memory array.
+      </p>
+      <div class="modal-buttons">
+        <button type="button" class="btn-modal btn-cancel" (click)="showConfirmModal.set(false)">Cancel</button>
+        <button type="button" class="btn-modal btn-danger" (click)="onDeleteAllConfirmed()">
+          Yes, Delete All
+        </button>
+      </div>
+    </div>
+  </div>
+}

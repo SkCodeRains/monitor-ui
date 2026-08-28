@@ -6,6 +6,7 @@
     "start": "ng serve",
     "build": "ng build",
     "build:docs": "build.bat",
+    "commit": "commit.bat",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },

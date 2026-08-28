@@ -1,0 +1,96 @@
+<div class="grid-section">
+  <!-- Section Meta & Controls -->
+  <div class="section-header">
+    <div class="header-info">
+      <h3 class="section-title">In-Memory Data Tiles</h3>
+      <span class="section-counter">
+        Showing {{ monitorService.filteredItems().length }} of {{ monitorService.totalCount() }} tiles
+      </span>
+    </div>
+
+    <div class="scroll-actions">
+      <button 
+        type="button" 
+        class="btn-scroll" 
+        (click)="scrollToTop()" 
+        title="Smooth scroll to top"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="18 15 12 9 6 15"></polyline>
+        </svg>
+        <span>Top</span>
+      </button>
+
+      <button 
+        type="button" 
+        class="btn-scroll" 
+        (click)="scrollToBottom()" 
+        title="Smooth scroll to bottom"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+        <span>Bottom</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Scrollable Grid Area -->
+  <div #scrollContainer class="scroll-container">
+    @if (monitorService.isLoading() && monitorService.items().length === 0) {
+      <!-- Loading State -->
+      <div class="loading-state glass-panel animate-fade-in">
+        <div class="spinner"></div>
+        <p>Fetching data from Express array...</p>
+      </div>
+    } @else if (monitorService.totalCount() === 0) {
+      <!-- Empty State (No items in array) -->
+      <div class="empty-state glass-panel animate-fade-in">
+        <div class="empty-icon">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+          </svg>
+        </div>
+        <h4 class="empty-title">In-Memory Array is Empty</h4>
+        <p class="empty-subtitle">
+          No data has been posted to the server yet, or all items were deleted.
+        </p>
+        <button type="button" class="btn-sample" (click)="addSampleItem()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span>Add Sample Tile</span>
+        </button>
+      </div>
+    } @else if (monitorService.filteredItems().length === 0) {
+      <!-- No Search Results -->
+      <div class="empty-state glass-panel animate-fade-in">
+        <div class="empty-icon">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+        </div>
+        <h4 class="empty-title">No Matching Tiles Found</h4>
+        <p class="empty-subtitle">
+          No items match your filter "{{ monitorService.searchTerm() }}".
+        </p>
+        <button type="button" class="btn-sample" (click)="monitorService.setSearchTerm('')">
+          Clear Filter
+        </button>
+      </div>
+    } @else {
+      <!-- Responsive Tiles Grid with Smooth Scrolling -->
+      <div class="tiles-grid">
+        @for (item of monitorService.filteredItems(); track item.id) {
+          <app-tile-card 
+            [item]="item" 
+            class="animate-fade-in"
+          />
+        }
+      </div>
+    }
+  </div>
+</div>
