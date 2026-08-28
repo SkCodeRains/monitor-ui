@@ -10,6 +10,34 @@ const TOKEN_STORAGE_KEY = 'monitor_jwt_auth_token';
 const API_KEY_STORAGE_KEY = 'monitor_jwt_api_key';
 const USER_STORAGE_KEY = 'monitor_jwt_user_profile';
 
+function getStorageItem(key: string): string | null {
+  try {
+    return typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
+  } catch {
+    return null;
+  }
+}
+
+function setStorageItem(key: string, value: string): void {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(key, value);
+    }
+  } catch {
+    // Ignore storage quota or access errors
+  }
+}
+
+function removeStorageItem(key: string): void {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem(key);
+    }
+  } catch {
+    // Ignore errors
+  }
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -19,8 +47,8 @@ export class AuthService {
   private readonly toast = inject(ToastService);
   private readonly apiUrl = environment.apiUrl;
 
-  readonly token = signal<string | null>(localStorage.getItem(TOKEN_STORAGE_KEY));
-  readonly apiKey = signal<string | null>(localStorage.getItem(API_KEY_STORAGE_KEY));
+  readonly token = signal<string | null>(getStorageItem(TOKEN_STORAGE_KEY));
+  readonly apiKey = signal<string | null>(getStorageItem(API_KEY_STORAGE_KEY));
   readonly currentUser = signal<UserProfile | null>(this.loadStoredUser());
   readonly isLoading = signal<boolean>(false);
   readonly authError = signal<string | null>(null);
@@ -35,7 +63,7 @@ export class AuthService {
 
   private loadStoredUser(): UserProfile | null {
     try {
-      const stored = localStorage.getItem(USER_STORAGE_KEY);
+      const stored = getStorageItem(USER_STORAGE_KEY);
       return stored ? JSON.parse(stored) : null;
     } catch {
       return null;
@@ -60,9 +88,9 @@ export class AuthService {
       );
 
       if (res && res.success && res.token && res.user) {
-        localStorage.setItem(TOKEN_STORAGE_KEY, res.token);
-        localStorage.setItem(API_KEY_STORAGE_KEY, apiKey);
-        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(res.user));
+        setStorageItem(TOKEN_STORAGE_KEY, res.token);
+        setStorageItem(API_KEY_STORAGE_KEY, apiKey);
+        setStorageItem(USER_STORAGE_KEY, JSON.stringify(res.user));
         this.token.set(res.token);
         this.apiKey.set(apiKey);
         this.currentUser.set(res.user);
@@ -93,7 +121,7 @@ export class AuthService {
       );
       if (res && res.success && res.user) {
         this.currentUser.set(res.user);
-        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(res.user));
+        setStorageItem(USER_STORAGE_KEY, JSON.stringify(res.user));
       }
     } catch (err: any) {
       // ONLY clear session if server explicitly responded with 401/403 Unauthorized (invalid/expired JWT or API Key)
@@ -105,9 +133,9 @@ export class AuthService {
   }
 
   logout(showNotification = true): void {
-    localStorage.removeItem(TOKEN_STORAGE_KEY);
-    localStorage.removeItem(API_KEY_STORAGE_KEY);
-    localStorage.removeItem(USER_STORAGE_KEY);
+    removeStorageItem(TOKEN_STORAGE_KEY);
+    removeStorageItem(API_KEY_STORAGE_KEY);
+    removeStorageItem(USER_STORAGE_KEY);
     this.token.set(null);
     this.apiKey.set(null);
     this.currentUser.set(null);
@@ -117,4 +145,5 @@ export class AuthService {
     this.router.navigate(['/login']);
   }
 }
+
 
