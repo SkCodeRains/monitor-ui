@@ -27,6 +27,10 @@ export const routes: Routes = [
       {
         path: 'trash',
         loadComponent: () => import('@feature/trash/trash.component').then(m => m.TrashComponent)
+      },
+      {
+        path: 'exclusions',
+        loadComponent: () => import('@feature/exclusions/exclusions.component').then(m => m.ExclusionsComponent)
       }
     ]
   },

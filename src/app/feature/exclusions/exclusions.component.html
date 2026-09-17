@@ -1,0 +1,229 @@
+<div class="exclusions-page animate-fade-in">
+  <!-- Header Banner -->
+  <div class="header-banner glass-panel">
+    <div class="header-left">
+      <div class="shield-badge-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+          <line x1="9" y1="12" x2="15" y2="12"></line>
+        </svg>
+      </div>
+      <div>
+        <h2 class="title">Dynamic Filter & Exclusion Rules</h2>
+        <p class="subtitle">
+          Manage excluded WhatsApp groups, chat senders, notification titles, and apps. Rules sync live to all Android devices in real time.
+        </p>
+      </div>
+    </div>
+
+    <div class="header-right">
+      <div class="stat-pills">
+        <div class="stat-pill">
+          <span class="label">Total Rules:</span>
+          <span class="value">{{ exclusionService.totalCount() }}</span>
+        </div>
+        <div class="stat-pill title-pill">
+          <span class="label">Titles/Keywords:</span>
+          <span class="value">{{ exclusionService.titleExclusions().length }}</span>
+        </div>
+        <div class="stat-pill pkg-pill">
+          <span class="label">Packages:</span>
+          <span class="value">{{ exclusionService.packageExclusions().length }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add New Exclusion Form -->
+  <div class="create-card glass-panel">
+    <div class="create-header">
+      <h3 class="create-title">Add Exclusion Rule</h3>
+      <span class="create-hint">Any notification or outgoing chat containing this title or package will be ignored by Android clients.</span>
+    </div>
+
+    <div class="create-form">
+      <!-- Type Switcher -->
+      <div class="type-segmented-control">
+        <button 
+          type="button" 
+          class="seg-btn" 
+          [class.active]="newType() === 'title'"
+          (click)="setType('title')"
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+          </svg>
+          <span>Chat / Notification Title</span>
+        </button>
+
+        <button 
+          type="button" 
+          class="seg-btn" 
+          [class.active]="newType() === 'package'"
+          (click)="setType('package')"
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+            <line x1="12" y1="18" x2="12.01" y2="18"></line>
+          </svg>
+          <span>App Package Name</span>
+        </button>
+      </div>
+
+      <!-- Input and Action -->
+      <div class="input-action-row">
+        <div class="input-wrapper">
+          <input 
+            type="text" 
+            class="exclusion-input"
+            [placeholder]="newType() === 'title' ? 'Enter title, sender, or WhatsApp group name (e.g. Fi - Sabhilillah)...' : 'Enter Android package name (e.g. com.google.android.youtube)...'"
+            [value]="newValue()"
+            (input)="newValue.set($any($event.target).value)"
+            (keydown.enter)="onAdd()"
+          />
+        </div>
+
+        <button 
+          type="button" 
+          class="btn-add" 
+          [disabled]="exclusionService.isSaving() || !newValue().trim()"
+          (click)="onAdd()"
+        >
+          @if (exclusionService.isSaving()) {
+            <span class="spinner"></span>
+            <span>Saving...</span>
+          } @else {
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            <span>Add Rule</span>
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter & Search Toolbar -->
+  <div class="toolbar-row glass-panel">
+    <div class="filter-tabs">
+      <button 
+        type="button" 
+        class="filter-tab" 
+        [class.active]="filterType() === 'ALL'"
+        (click)="setFilter('ALL')"
+      >
+        All Rules ({{ exclusionService.totalCount() }})
+      </button>
+
+      <button 
+        type="button" 
+        class="filter-tab" 
+        [class.active]="filterType() === 'title'"
+        (click)="setFilter('title')"
+      >
+        Titles & Groups ({{ exclusionService.titleExclusions().length }})
+      </button>
+
+      <button 
+        type="button" 
+        class="filter-tab" 
+        [class.active]="filterType() === 'package'"
+        (click)="setFilter('package')"
+      >
+        App Packages ({{ exclusionService.packageExclusions().length }})
+      </button>
+    </div>
+
+    <div class="search-box">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+      <input 
+        type="text" 
+        placeholder="Filter rules..."
+        [value]="searchQuery()"
+        (input)="searchQuery.set($any($event.target).value)"
+      />
+    </div>
+
+    <button 
+      type="button" 
+      class="btn-refresh" 
+      (click)="exclusionService.loadExclusions(false)" 
+      [disabled]="exclusionService.isLoading()"
+      title="Reload rules from server"
+    >
+      <svg [class.spin]="exclusionService.isLoading()" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Exclusions List Grid -->
+  @if (filteredExclusions().length === 0) {
+    <div class="empty-state glass-panel animate-fade-in">
+      <div class="empty-icon">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+        </svg>
+      </div>
+      <h3 class="empty-title">No Rules Found</h3>
+      <p class="empty-desc">
+        @if (searchQuery().trim()) {
+          No exclusion rule matches "{{ searchQuery() }}".
+        } @else {
+          No exclusion rules currently configured. All incoming and outgoing messages are being captured.
+        }
+      </p>
+    </div>
+  } @else {
+    <div class="exclusions-grid">
+      @for (item of filteredExclusions(); track item.id) {
+        <div class="exclusion-card glass-panel animate-fade-in">
+          <div class="card-left">
+            <span 
+              class="type-tag" 
+              [class.type-title]="item.type === 'title'"
+              [class.type-package]="item.type === 'package'"
+            >
+              @if (item.type === 'title') {
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+                <span>TITLE / SENDER</span>
+              } @else {
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+                </svg>
+                <span>APP PACKAGE</span>
+              }
+            </span>
+
+            <div class="rule-value" [class.font-mono]="item.type === 'package'">
+              {{ item.value }}
+            </div>
+
+            <span class="created-at" [title]="item.createdAt">
+              Created {{ item.createdAt | timeAgo }}
+            </span>
+          </div>
+
+          <button 
+            type="button" 
+            class="btn-delete" 
+            (click)="onDelete(item)" 
+            title="Delete this exclusion rule"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+            <span>Delete</span>
+          </button>
+        </div>
+      }
+    </div>
+  }
+</div>

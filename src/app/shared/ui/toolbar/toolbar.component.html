@@ -36,8 +36,21 @@
     }
   </div>
 
-  <!-- Right side: Refresh, Auto-Sync, Search & Delete All -->
+  <!-- Right side: Refresh, Auto-Sync, Exclusions, Search & Delete All -->
   <div class="toolbar-right">
+    <!-- Manage Exclusions Button -->
+    <a 
+      routerLink="/exclusions" 
+      class="btn-action btn-exclusions"
+      title="Manage live exclusion filters for WhatsApp groups, senders, and apps"
+    >
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+        <line x1="9" y1="12" x2="15" y2="12"></line>
+      </svg>
+      <span>Exclusions</span>
+    </a>
+
     <!-- Manual Refresh Button -->
     <button 
       type="button" 

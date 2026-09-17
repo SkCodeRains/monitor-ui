@@ -2,10 +2,11 @@ import { Injectable, inject, signal, computed, effect } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '@env/environment';
-import { MonitorItem, ApiResponse } from '@model';
+import { MonitorItem, ApiResponse, NotificationCategory } from '@model';
 import { ToastService } from './toast.service';
 import { TrashService } from './trash.service';
 import { AuthService } from './auth.service';
+import { NotificationParserService } from './notification-parser.service';
 
 @Injectable({
   providedIn: 'root'
@@ -14,52 +15,68 @@ export class MonitorService {
   private readonly http = inject(HttpClient);
   private readonly toast = inject(ToastService);
   private readonly trash = inject(TrashService);
+  private readonly parser = inject(NotificationParserService);
   readonly auth = inject(AuthService);
   private readonly apiUrl = environment.apiUrl;
 
   // Primary reactive state using Angular Signals
   readonly items = signal<MonitorItem[]>([]);
   readonly selectedIds = signal<Set<string>>(new Set<string>());
+  readonly selectedCategory = signal<NotificationCategory>('ALL');
   readonly isLoading = signal<boolean>(false);
   readonly isSaving = signal<boolean>(false);
   readonly searchTerm = signal<string>('');
   readonly isBackendOnline = signal<boolean>(true);
   readonly lastSynced = signal<Date | null>(null);
   readonly isAutoRefreshEnabled = signal<boolean>(false);
+  readonly nowTick = signal<number>(Date.now());
   private pollingTimer: any = null;
+  private searchDebounceTimer: any = null;
+
+  // Server-Side Pagination State Signals
+  readonly pageSize = signal<number>(25);
+  readonly currentPage = signal<number>(1);
+  readonly serverTotalItems = signal<number>(0);
+  readonly serverTotalPages = signal<number>(1);
+  readonly serverCategoryCounts = signal<Record<NotificationCategory, number>>({
+    ALL: 0,
+    WHATSAPP: 0,
+    CALL: 0,
+    SMS: 0,
+    NOTIFICATION: 0,
+    OTHER: 0
+  });
 
   // Computed signals
-  readonly totalCount = computed(() => this.items().length);
-
+  readonly totalCount = computed(() => this.serverTotalItems());
+  readonly totalPages = computed(() => Math.max(1, this.serverTotalPages()));
+  readonly categoryCounts = computed(() => this.serverCategoryCounts());
   readonly selectedCount = computed(() => this.selectedIds().size);
 
-  readonly filteredItems = computed(() => {
-    const term = this.searchTerm().trim().toLowerCase();
-    const all = this.items();
-    if (!term) return all;
+  // Since filtering and pagination occur on the server, filteredItems and paginatedItems
+  // map directly to the current page slice returned by the backend
+  readonly filteredItems = computed(() => this.items());
+  readonly paginatedItems = computed(() => this.items());
 
-    return all.filter(item => {
-      const idMatch = item.id.toLowerCase().includes(term);
-      const eventTypeMatch = (item.eventType || '').toLowerCase().includes(term);
-      const sourceMatch = (item.source || '').toLowerCase().includes(term);
-      const dataString = typeof item.data === 'string' ? item.data : JSON.stringify(item.data);
-      const dataMatch = dataString.toLowerCase().includes(term);
-      const payloadString = typeof item.payload === 'string' ? item.payload : JSON.stringify(item.payload);
-      const payloadMatch = payloadString.toLowerCase().includes(term);
-      const dateMatch = item.createdAt.toLowerCase().includes(term);
-      return idMatch || eventTypeMatch || sourceMatch || dataMatch || payloadMatch || dateMatch;
-    });
+  readonly pageRangeText = computed(() => {
+    const total = this.serverTotalItems();
+    if (total === 0) return '0 of 0';
+    const size = this.pageSize();
+    const page = this.currentPage();
+    const start = (page - 1) * size + 1;
+    const end = Math.min(page * size, total);
+    return `${start}-${end} of ${total}`;
   });
 
   readonly isAllSelected = computed(() => {
-    const visible = this.filteredItems();
+    const visible = this.paginatedItems();
     if (visible.length === 0) return false;
     const selected = this.selectedIds();
     return visible.every(item => selected.has(item.id));
   });
 
   readonly isSomeSelected = computed(() => {
-    const visible = this.filteredItems();
+    const visible = this.paginatedItems();
     if (visible.length === 0) return false;
     const selected = this.selectedIds();
     const count = visible.filter(item => selected.has(item.id)).length;
@@ -79,8 +96,74 @@ export class MonitorService {
         this.loadItems(true);
       } else {
         this.items.set([]);
+        this.serverTotalItems.set(0);
+        this.serverTotalPages.set(1);
       }
     });
+
+    // Reactive 1-second ticker for live timestamp calculations
+    setInterval(() => {
+      this.nowTick.set(Date.now());
+    }, 1000);
+  }
+
+  /**
+   * Server-Side Pagination Controls
+   */
+  setPage(page: number): void {
+    const total = this.totalPages();
+    const clamped = Math.max(1, Math.min(page, total));
+    if (clamped !== this.currentPage()) {
+      this.currentPage.set(clamped);
+      this.loadItems();
+    }
+  }
+
+  nextPage(): void {
+    if (this.currentPage() < this.totalPages()) {
+      this.currentPage.update(p => p + 1);
+      this.loadItems();
+    }
+  }
+
+  prevPage(): void {
+    if (this.currentPage() > 1) {
+      this.currentPage.update(p => p - 1);
+      this.loadItems();
+    }
+  }
+
+  setPageSize(size: number): void {
+    this.pageSize.set(Number(size));
+    this.currentPage.set(1);
+    this.loadItems();
+  }
+
+  setSearchTerm(term: string): void {
+    this.searchTerm.set(term);
+    this.currentPage.set(1);
+    if (this.searchDebounceTimer) {
+      clearTimeout(this.searchDebounceTimer);
+    }
+    this.searchDebounceTimer = setTimeout(() => {
+      this.loadItems();
+    }, 300);
+  }
+
+  setCategory(category: NotificationCategory): void {
+    this.selectedCategory.set(category);
+    this.currentPage.set(1);
+    this.loadItems();
+  }
+
+  resetFilters(): void {
+    if (this.searchDebounceTimer) {
+      clearTimeout(this.searchDebounceTimer);
+    }
+    this.selectedCategory.set('ALL');
+    this.searchTerm.set('');
+    this.currentPage.set(1);
+    this.loadItems();
   }
 
   /**
@@ -115,7 +198,7 @@ export class MonitorService {
   }
 
   /**
-   * Fetch all items from GET /api/data
+   * Fetch paginated items from GET /api/data?page=X&limit=Y&category=Z&search=W
    */
   async loadItems(silent = false): Promise<void> {
     if (!this.auth.isAuthenticated()) {
@@ -127,14 +210,39 @@ export class MonitorService {
     }
 
     try {
+      const params: Record<string, string | number> = {
+        page: this.currentPage(),
+        limit: this.pageSize()
+      };
+
+      const category = this.selectedCategory();
+      if (category && category !== 'ALL') {
+        params['category'] = category;
+      }
+
+      const search = this.searchTerm().trim();
+      if (search) {
+        params['search'] = search;
+      }
+
       const response = await firstValueFrom(
-        this.http.get<ApiResponse<MonitorItem[]>>(`${this.apiUrl}/data`)
+        this.http.get<ApiResponse<MonitorItem[]>>(`${this.apiUrl}/data`, { params })
       );
 
       if (response && response.success && Array.isArray(response.data)) {
         this.items.set(response.data);
         this.isBackendOnline.set(true);
         this.lastSynced.set(new Date());
+
+        if (response.totalItems !== undefined) {
+          this.serverTotalItems.set(response.totalItems);
+        }
+        if (response.totalPages !== undefined) {
+          this.serverTotalPages.set(response.totalPages);
+        }
+        if (response.categoryCounts) {
+          this.serverCategoryCounts.set(response.categoryCounts);
+        }
 
         const validIds = new Set(response.data.map(i => i.id));
         this.selectedIds.update(current => {
@@ -146,7 +254,7 @@ export class MonitorService {
         });
 
         if (!silent) {
-          this.toast.success('Refreshed', `Synced ${response.data.length} telemetry item(s).`);
+          this.toast.success('Refreshed', `Loaded page ${response.page || this.currentPage()} (${response.data.length} items, ${response.totalItems ?? response.data.length} total).`);
         }
       }
     } catch (err: any) {
@@ -187,10 +295,7 @@ export class MonitorService {
       );
 
       if (response && response.success && response.item) {
-        this.items.update(current => {
-          const exists = current.some(i => i.id === response.item!.id);
-          return exists ? current : [response.item!, ...current];
-        });
+        await this.loadItems(true);
         this.toast.success('Created', 'New event tile added to the stream.');
         this.lastSynced.set(new Date());
         return true;
@@ -222,7 +327,7 @@ export class MonitorService {
         if (itemToDelete) {
           this.trash.moveToTrash(itemToDelete);
         }
-        this.items.update(current => current.filter(item => item.id !== id));
+        await this.loadItems(true);
         this.selectedIds.update(current => {
           const next = new Set(current);
           next.delete(id);
@@ -296,6 +401,16 @@ export class MonitorService {
           this.trash.moveToTrash(allItems);
         }
         this.items.set([]);
+        this.serverTotalItems.set(0);
+        this.serverTotalPages.set(1);
+        this.serverCategoryCounts.set({
+          ALL: 0,
+          WHATSAPP: 0,
+          CALL: 0,
+          SMS: 0,
+          NOTIFICATION: 0,
+          OTHER: 0
+        });
         this.selectedIds.set(new Set());
         this.toast.warning('Store Cleared', `Deleted all items from server and archived in Trash.`);
         this.lastSynced.set(new Date());
@@ -341,7 +456,7 @@ export class MonitorService {
   }
 
   toggleSelectAll(): void {
-    const visible = this.filteredItems();
+    const visible = this.paginatedItems();
     const allSelected = this.isAllSelected();
 
     this.selectedIds.update(current => {
@@ -357,9 +472,5 @@ export class MonitorService {
 
   clearSelection(): void {
     this.selectedIds.set(new Set());
-  }
-
-  setSearchTerm(term: string): void {
-    this.searchTerm.set(term);
   }
 }

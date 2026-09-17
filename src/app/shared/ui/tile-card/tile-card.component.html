@@ -1,13 +1,14 @@
 <div 
   class="tile-card glass-panel" 
   [class.selected]="isSelected()"
+  [class]="'channel-theme-' + parsed().category.toLowerCase()"
   (click)="onCardClick($event)"
 >
-  <!-- Card Top Bar -->
+  <!-- Card Header -->
   <div class="card-header">
     <div class="header-left">
       <!-- Selection Checkbox -->
-      <label class="custom-checkbox" (click)="$event.stopPropagation()">
+      <label class="custom-checkbox" (click)="$event.stopPropagation()" title="Select tile">
         <input 
           type="checkbox" 
           [checked]="isSelected()"
@@ -16,67 +17,578 @@
         <span class="checkmark"></span>
       </label>
 
-      <!-- Unique ID Pill -->
+      <!-- App / Channel Brand Badge -->
+      <span class="brand-pill" [class]="getAppBadgeInfo().brandClass">
+        <!-- WhatsApp Icon -->
+        @if (getAppBadgeInfo().icon === 'whatsapp' || getAppBadgeInfo().icon === 'whatsapp-call') {
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+          </svg>
+        } @else if (getAppBadgeInfo().icon === 'call') {
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+          </svg>
+        } @else if (getAppBadgeInfo().icon === 'instagram') {
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+            <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+            <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+          </svg>
+        } @else if (getAppBadgeInfo().icon === 'browser') {
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="2" y1="12" x2="22" y2="12"></line>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+          </svg>
+        } @else if (getAppBadgeInfo().icon === 'sms') {
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+          </svg>
+        } @else {
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <rect x="4" y="4" width="16" height="16" rx="2"></rect>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+        }
+        <span>{{ getAppBadgeInfo().label }}</span>
+      </span>
+
+      <!-- Unique ID Pill with Click-to-Copy -->
       <button 
         type="button" 
-        class="id-badge" 
+        class="id-pill" 
         (click)="copyId($event)" 
-        title="Click to copy ID: {{ item().id }}"
+        title="Copy ID: {{ item().id }}"
       >
-        <span class="id-text">ID: {{ formatDisplayId(item().id) }}</span>
-        <svg class="copy-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <span class="id-mono">#{{ formatDisplayId(item().id) }}</span>
+        <svg class="copy-tiny" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
           <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
           <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
         </svg>
       </button>
     </div>
 
-    <!-- Date & Delete Action -->
+    <!-- Header Right Controls -->
     <div class="header-right">
-      <span class="timestamp-badge" [title]="item().createdAt">
-        {{ item().createdAt | timeAgo }}
-      </span>
-
+      <!-- Quick Copy Payload Header Action -->
       <button 
         type="button" 
-        class="btn-delete-card" 
-        (click)="onDelete($event)" 
-        title="Delete this tile from array"
+        class="btn-header-action" 
+        [class.active-copied]="payloadCopied()"
+        (click)="copyPayload($event)"
+        title="Copy raw JSON payload"
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        @if (payloadCopied()) {
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        } @else {
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="16 18 22 12 16 6"></polyline>
+            <polyline points="8 6 2 12 8 18"></polyline>
+          </svg>
+        }
+      </button>
+
+      <!-- Dual View Switcher (Smart vs Raw) -->
+      <button 
+        type="button" 
+        class="btn-header-action view-switch" 
+        [class.active-mode]="viewMode() === 'raw'"
+        (click)="toggleViewMode($event)"
+        [title]="viewMode() === 'smart' ? 'Switch to Raw JSON mode' : 'Switch to Beautified mode'"
+      >
+        @if (viewMode() === 'smart') {
+          <span>RAW</span>
+        } @else {
+          <span>UI</span>
+        }
+      </button>
+
+      <!-- Delete Button -->
+      <button 
+        type="button" 
+        class="btn-delete" 
+        (click)="onDelete($event)" 
+        title="Delete this item"
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
           <polyline points="3 6 5 6 21 6"></polyline>
           <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
         </svg>
       </button>
+
+      <!-- Right Corner Time Badge: Hour, Min, Sec + Live Ago Time -->
+      <div class="time-corner-badge" [title]="'Event: ' + (item().createdAt || item().timestamp)">
+        <svg class="clock-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+        <span class="time-clock">{{ formatExactTime(item().createdAt || item().timestamp) }}</span>
+        <span class="time-divider">•</span>
+        <span class="time-ago">{{ (item().createdAt || item().timestamp) | timeAgo: monitorService.nowTick() }}</span>
+      </div>
     </div>
   </div>
 
-  <!-- Event Tags (if eventType or source present) -->
-  @if (item().eventType || item().source) {
-    <div class="event-meta-tags">
-      @if (item().eventType) {
-        <span class="tag-event" [class]="'event-' + item().eventType?.toLowerCase()">
-          {{ item().eventType }}
-        </span>
+  <!-- Smart View Display -->
+  @if (viewMode() === 'smart') {
+    <div class="card-body animate-fade-in">
+      
+      <!-- 1. PHONE CALL VIEW -->
+      @if (parsed().category === 'CALL') {
+        <div class="call-container">
+          <div class="call-hero-card" [class]="'call-dir-' + (parsed().callDetails?.direction || 'incoming').toLowerCase()">
+            <div class="call-avatar-wrapper">
+              <div class="call-avatar" [class]="'avatar-' + (parsed().callDetails?.direction || 'incoming').toLowerCase()">
+                @if (parsed().callDetails?.direction === 'MISSED') {
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                } @else if (parsed().callDetails?.direction === 'OUTGOING') {
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <line x1="7" y1="17" x2="17" y2="7"></line>
+                    <polyline points="7 7 17 7 17 17"></polyline>
+                  </svg>
+                } @else {
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                  </svg>
+                }
+              </div>
+            </div>
+
+            <div class="call-hero-info">
+              <div class="call-title-row">
+                <h4 class="caller-name">{{ parsed().callDetails?.callerName || parsed().title }}</h4>
+                
+                <!-- Missed Call Badge / Direction Tag -->
+                @if (parsed().callDetails?.direction === 'MISSED') {
+                  <span class="status-pill pill-danger">
+                    Missed Call
+                    @if (parsed().callDetails?.missedCount) {
+                      <strong>({{ parsed().callDetails?.missedCount }}x)</strong>
+                    }
+                  </span>
+                } @else if (parsed().callDetails?.direction === 'OUTGOING') {
+                  <span class="status-pill pill-info">Outgoing</span>
+                } @else {
+                  <span class="status-pill pill-success">Incoming</span>
+                }
+
+                @if (parsed().callDetails?.callStatusText) {
+                  <span class="status-pill pill-warning">{{ parsed().callDetails?.callStatusText }}</span>
+                }
+              </div>
+
+              <!-- Phone Number Pill with 1-Click Copy -->
+              @if (parsed().callDetails?.phoneNumber) {
+                <div class="phone-number-row">
+                  <button 
+                    type="button" 
+                    class="btn-phone-copy" 
+                    (click)="copyText($event, parsed().callDetails!.phoneNumber!, 'Phone Number')"
+                    title="Click to copy phone number"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                    </svg>
+                    <span class="phone-mono">{{ parsed().callDetails?.phoneNumber }}</span>
+                    <span class="copy-tag">Copy</span>
+                  </button>
+                </div>
+              }
+            </div>
+          </div>
+
+          <!-- Call Metrics Grid -->
+          <div class="call-specs-grid">
+            <div class="spec-card">
+              <span class="spec-label">Duration</span>
+              <span class="spec-value">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                {{ parsed().callDetails?.duration || (parsed().callDetails?.direction === 'MISSED' ? '0s (Missed)' : 'Connected') }}
+              </span>
+            </div>
+
+            <div class="spec-card">
+              <span class="spec-label">Telemetry Source</span>
+              <span class="spec-value mono-val" [title]="parsed().packageName || item().source">
+                {{ parsed().packageName || item().source || 'Android Telephony' }}
+              </span>
+            </div>
+          </div>
+        </div>
       }
-      @if (item().source) {
-        <span class="tag-source">
-          {{ item().source }}
-        </span>
+
+      <!-- 2. WHATSAPP VIEW -->
+      @else if (parsed().category === 'WHATSAPP') {
+        <div class="whatsapp-container">
+          <!-- Contact / Channel Meta Bar -->
+          <div class="wa-contact-bar">
+            <div class="wa-user-avatar" [style.background-color]="getSenderColor(parsed().title)">
+              {{ getSenderInitials(parsed().title) }}
+            </div>
+            <div class="wa-user-meta">
+              <span class="wa-name">{{ parsed().title }}</span>
+              <span class="wa-sub-pkg">{{ parsed().packageName || 'com.whatsapp' }}</span>
+            </div>
+
+            @if (parsed().messages.length > 1) {
+              <span class="thread-badge">
+                {{ parsed().messages.length }} messages
+              </span>
+            }
+          </div>
+
+          <!-- Messages Thread List -->
+          <div class="wa-thread-list">
+            @for (msg of parsed().messages; track msg.id) {
+              <div class="wa-bubble">
+                <div class="bubble-header">
+                  <div class="bubble-sender-info">
+                    <span class="bubble-avatar" [style.background-color]="getSenderColor(msg.sender)">
+                      {{ getSenderInitials(msg.sender) }}
+                    </span>
+                    <span class="bubble-sender-name" [style.color]="getSenderColor(msg.sender)">
+                      {{ msg.sender }}
+                    </span>
+                    @if (msg.group) {
+                      <span class="bubble-group-pill" [title]="msg.group">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                          <circle cx="9" cy="7" r="4"></circle>
+                          <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                          <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                        <span>{{ msg.group }}</span>
+                      </span>
+                    }
+                  </div>
+
+                  <button 
+                    type="button" 
+                    class="btn-copy-bubble" 
+                    (click)="copyText($event, msg.text, 'Message')"
+                    title="Copy this message"
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                  </button>
+                </div>
+
+                <!-- Media Highlights (Photos, Stickers, Reactions) -->
+                @if (msg.mediaType === 'photo') {
+                  <div class="media-chip photo">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                      <circle cx="12" cy="13" r="4"></circle>
+                    </svg>
+                    <span>Photo Attachment</span>
+                  </div>
+                } @else if (msg.mediaType === 'sticker') {
+                  <div class="media-chip sticker">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                    </svg>
+                    <span>Sticker</span>
+                  </div>
+                }
+
+                <!-- Message Content -->
+                <div class="bubble-content" [class.clamp-text]="!isExpanded() && msg.text.length > 280">
+                  {{ msg.text }}
+                </div>
+
+                <!-- Extracted Social Link Chips -->
+                @if (msg.links.length > 0) {
+                  <div class="links-row">
+                    @for (link of msg.links; track link.url) {
+                      <button 
+                        type="button" 
+                        class="social-chip" 
+                        [class]="'platform-' + link.platform"
+                        (click)="openExternalLink($event, link.url)"
+                        title="Open {{ link.url }}"
+                      >
+                        @if (link.platform === 'instagram') {
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                            <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                            <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                          </svg>
+                        } @else if (link.platform === 'facebook') {
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
+                          </svg>
+                        } @else if (link.platform === 'youtube') {
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"></path>
+                            <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon>
+                          </svg>
+                        } @else {
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+                          </svg>
+                        }
+                        <span>{{ link.label }}</span>
+                        <svg class="ext-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                          <polyline points="15 3 21 3 21 9"></polyline>
+                          <line x1="10" y1="14" x2="21" y2="3"></line>
+                        </svg>
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
       }
+
+      <!-- 3. APP NOTIFICATION VIEW (Instagram, Browser, System Alerts) -->
+      @else if (parsed().category === 'NOTIFICATION') {
+        <div class="notification-container">
+          <div class="notification-hero-card">
+            <div class="notif-header-line">
+              <div class="notif-avatar" [class]="'avatar-' + (parsed().appDetails?.appIcon || 'generic')">
+                @if (parsed().appDetails?.appIcon === 'instagram') {
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                  </svg>
+                } @else if (parsed().appDetails?.appIcon === 'browser') {
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="2" y1="12" x2="22" y2="12"></line>
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                  </svg>
+                } @else {
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                  </svg>
+                }
+              </div>
+
+              <div class="notif-meta">
+                <span class="notif-app-title">{{ parsed().appDetails?.appName || 'App Alert' }}</span>
+                <span class="notif-pkg-mono">{{ parsed().packageName || item().source }}</span>
+              </div>
+            </div>
+
+            <!-- Subject / Headline -->
+            <h4 class="notif-headline">{{ parsed().title }}</h4>
+
+            <!-- Reaction Highlight Box (e.g. Instagram reaction) -->
+            @if (parsed().appDetails?.reaction) {
+              <div class="reaction-highlight-card">
+                <span class="reaction-emoji-badge">{{ parsed().appDetails?.reaction?.emoji }}</span>
+                <div class="reaction-info">
+                  <span class="reaction-badge-label">Reaction Received</span>
+                  @if (parsed().appDetails?.reaction?.targetMessage) {
+                    <span class="reaction-target-text">
+                      To message: <em>"{{ parsed().appDetails?.reaction?.targetMessage }}"</em>
+                    </span>
+                  }
+                </div>
+              </div>
+            }
+
+            <!-- Notification Text Body -->
+            <div class="notif-body-text">
+              {{ parsed().rawText }}
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- 4. SMS VIEW -->
+      @else if (parsed().category === 'SMS') {
+        <div class="sms-container">
+          <div class="sms-header-bar">
+            <div class="sms-avatar" [style.background-color]="getSenderColor(parsed().title)">
+              {{ getSenderInitials(parsed().title) }}
+            </div>
+            <div class="sms-meta">
+              <span class="sms-title">{{ parsed().title }}</span>
+              <span class="sms-badge-pill">SMS Incoming</span>
+            </div>
+          </div>
+
+          <div class="sms-bubbles">
+            @for (msg of parsed().messages; track msg.id) {
+              <div class="sms-bubble-card">
+                <div class="sms-sender-row">
+                  <span class="sms-sender">{{ msg.sender }}</span>
+                  <button type="button" class="btn-copy-bubble" (click)="copyText($event, msg.text, 'SMS')">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                  </button>
+                </div>
+                <div class="sms-text">{{ msg.text }}</div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- 5. OTHER / TELEMETRY VIEW -->
+      @else {
+        <div class="telemetry-container">
+          <div class="meta-tag-strip">
+            @if (item().eventType) {
+              <span class="telemetry-badge">{{ item().eventType }}</span>
+            }
+            @if (item().source) {
+              <span class="source-badge">{{ item().source }}</span>
+            }
+            @if (item().timestamp) {
+              <span class="time-epoch-badge">ts: {{ item().timestamp }}</span>
+            }
+          </div>
+
+          <div class="code-box">
+            <div class="code-header">
+              <span class="code-label">Raw Telemetry Data</span>
+              <button type="button" class="btn-inline-copy" (click)="copyPayload($event)">
+                {{ payloadCopied() ? 'Copied!' : 'Copy JSON' }}
+              </button>
+            </div>
+            <pre class="code-content"><code>{{ displayPayload() | prettyJson }}</code></pre>
+          </div>
+        </div>
+      }
+
     </div>
   }
 
-  <!-- Card Data Content -->
-  <div class="card-content">
-    <div class="data-block">
-      <div class="data-header">
-        <span class="data-type-label">{{ isJson() ? 'Payload / JSON' : 'Raw Content' }}</span>
-        <button type="button" class="btn-copy-data" (click)="copyData($event)">
-          {{ copied() ? 'Copied!' : 'Copy Payload' }}
-        </button>
+  <!-- Raw JSON View (Active when toggled directly) -->
+  @if (viewMode() === 'raw' || showJsonDrawer()) {
+    <div class="card-json-drawer animate-fade-in">
+      <div class="code-box">
+        <div class="code-header">
+          <div class="code-left">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2">
+              <polyline points="16 18 22 12 16 6"></polyline>
+              <polyline points="8 6 2 12 8 18"></polyline>
+            </svg>
+            <span class="code-label">Raw JSON Payload</span>
+          </div>
+          <button 
+            type="button" 
+            class="btn-inline-copy" 
+            [class.btn-copied]="payloadCopied()"
+            (click)="copyPayload($event)"
+          >
+            @if (payloadCopied()) {
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+              <span>Copied!</span>
+            } @else {
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              <span>Copy JSON</span>
+            }
+          </button>
+        </div>
+        <pre class="code-content"><code>{{ displayPayload() | prettyJson }}</code></pre>
       </div>
-      <pre class="data-code"><code>{{ displayPayload() | prettyJson }}</code></pre>
+    </div>
+  }
+
+  <!-- Card Action Footer -->
+  <div class="card-footer">
+    <!-- PROMINENT COPY PAYLOAD ACTION -->
+    <button 
+      type="button" 
+      class="btn-copy-payload-main" 
+      [class.btn-success-state]="payloadCopied()"
+      (click)="copyPayload($event)"
+      title="Copy the entire event JSON payload to clipboard"
+    >
+      @if (payloadCopied()) {
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+        <span class="payload-text">Payload Copied!</span>
+      } @else {
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+        </svg>
+        <span class="payload-text">Copy Payload</span>
+      }
+    </button>
+
+    <!-- Drawer / Secondary Actions -->
+    <div class="footer-secondary-actions">
+      <!-- Toggle JSON Inspect Drawer -->
+      <button 
+        type="button" 
+        class="btn-footer-secondary" 
+        [class.active-drawer]="showJsonDrawer()"
+        (click)="toggleJsonDrawer($event)"
+        title="Inspect JSON without leaving smart view"
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="16 18 22 12 16 6"></polyline>
+          <polyline points="8 6 2 12 8 18"></polyline>
+        </svg>
+        <span>{{ showJsonDrawer() ? 'Hide JSON' : 'Inspect' }}</span>
+      </button>
+
+      <!-- Contextual Quick Copy -->
+      @if (parsed().callDetails?.phoneNumber) {
+        <button 
+          type="button" 
+          class="btn-footer-secondary" 
+          (click)="copyText($event, parsed().callDetails!.phoneNumber!, 'Phone Number')"
+          title="Copy phone number"
+        >
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+          </svg>
+          <span>Copy Phone</span>
+        </button>
+      } @else if (parsed().rawText) {
+        <button 
+          type="button" 
+          class="btn-footer-secondary" 
+          (click)="copyText($event, parsed().rawText!, 'Message Text')"
+          title="Copy message content"
+        >
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+          </svg>
+          <span>Copy Text</span>
+        </button>
+      }
+
+      <!-- Expand / Collapse text if long -->
+      @if (parsed().rawText && parsed().rawText!.length > 280) {
+        <button 
+          type="button" 
+          class="btn-footer-secondary" 
+          (click)="toggleExpand($event)"
+          title="Expand/Collapse long message"
+        >
+          <span>{{ isExpanded() ? 'Collapse' : 'Expand' }}</span>
+        </button>
+      }
     </div>
   </div>
 </div>

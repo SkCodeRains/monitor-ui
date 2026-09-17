@@ -2,26 +2,32 @@ import { Pipe, PipeTransform } from '@angular/core';
 
 @Pipe({
   name: 'timeAgo',
-  standalone: true
+  pure: true
 })
 export class TimeAgoPipe implements PipeTransform {
-  transform(value: string | Date | undefined): string {
+  transform(value: string | number | Date | undefined, currentTimestamp?: number): string {
     if (!value) return '';
 
-    const date = typeof value === 'string' ? new Date(value) : value;
-    const now = new Date();
-    const elapsedSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    const date = typeof value === 'string' || typeof value === 'number' ? new Date(value) : value;
+    if (isNaN(date.getTime())) return '';
 
-    if (elapsedSeconds < 5) return 'Just now';
-    if (elapsedSeconds < 60) return `${elapsedSeconds}s ago`;
+    const now = currentTimestamp ? new Date(currentTimestamp) : new Date();
+    const elapsedSeconds = Math.max(0, Math.floor((now.getTime() - date.getTime()) / 1000));
 
-    const elapsedMinutes = Math.floor(elapsedSeconds / 60);
-    if (elapsedMinutes < 60) return `${elapsedMinutes}m ago`;
+    if (elapsedSeconds < 3) return 'Just now';
 
-    const elapsedHours = Math.floor(elapsedMinutes / 60);
-    if (elapsedHours < 24) return `${elapsedHours}h ago`;
+    const seconds = elapsedSeconds % 60;
+    const minutes = Math.floor(elapsedSeconds / 60) % 60;
+    const hours = Math.floor(elapsedSeconds / 3600) % 24;
+    const days = Math.floor(elapsedSeconds / 86400);
 
-    const elapsedDays = Math.floor(elapsedHours / 24);
-    return `${elapsedDays}d ago`;
+    const s = `${seconds}s`;
+    const m = `${minutes}m`;
+    const h = `${hours}h`;
+
+    if (days > 0) {
+      return `${days}d ${h} ${m} ${s} ago`;
+    }
+    return `${h} ${m} ${s} ago`;
   }
 }

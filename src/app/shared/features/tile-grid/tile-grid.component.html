@@ -4,34 +4,51 @@
     <div class="header-info">
       <h3 class="section-title">In-Memory Data Tiles</h3>
       <span class="section-counter">
-        Showing {{ monitorService.filteredItems().length }} of {{ monitorService.totalCount() }} tiles
+        Showing {{ monitorService.pageRangeText() }} tiles (Total: {{ monitorService.totalCount() }})
       </span>
     </div>
 
-    <div class="scroll-actions">
-      <button 
-        type="button" 
-        class="btn-scroll" 
-        (click)="scrollToTop()" 
-        title="Smooth scroll to top"
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <polyline points="18 15 12 9 6 15"></polyline>
-        </svg>
-        <span>Top</span>
-      </button>
+    <div class="header-controls">
+      <!-- Quick Page Size Selector in Header -->
+      <div class="page-size-selector">
+        <label for="pageSizeSelect">Per Page:</label>
+        <select 
+          id="pageSizeSelect" 
+          [ngModel]="monitorService.pageSize()" 
+          (ngModelChange)="changePageSize($event)"
+          class="select-page-size"
+        >
+          @for (size of pageSizeOptions; track size) {
+            <option [value]="size">{{ size }}</option>
+          }
+        </select>
+      </div>
 
-      <button 
-        type="button" 
-        class="btn-scroll" 
-        (click)="scrollToBottom()" 
-        title="Smooth scroll to bottom"
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <polyline points="6 9 12 15 18 9"></polyline>
-        </svg>
-        <span>Bottom</span>
-      </button>
+      <div class="scroll-actions">
+        <button 
+          type="button" 
+          class="btn-scroll" 
+          (click)="scrollToTop()" 
+          title="Smooth scroll to top"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="18 15 12 9 6 15"></polyline>
+          </svg>
+          <span>Top</span>
+        </button>
+
+        <button 
+          type="button" 
+          class="btn-scroll" 
+          (click)="scrollToBottom()" 
+          title="Smooth scroll to bottom"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+          <span>Bottom</span>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -65,7 +82,7 @@
         </button>
       </div>
     } @else if (monitorService.filteredItems().length === 0) {
-      <!-- No Search Results -->
+      <!-- No Filter Results -->
       <div class="empty-state glass-panel animate-fade-in">
         <div class="empty-icon">
           <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -73,24 +90,127 @@
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
           </svg>
         </div>
-        <h4 class="empty-title">No Matching Tiles Found</h4>
+        <h4 class="empty-title">No Matching Events Found</h4>
         <p class="empty-subtitle">
-          No items match your filter "{{ monitorService.searchTerm() }}".
+          @if (monitorService.selectedCategory() !== 'ALL' && monitorService.searchTerm()) {
+            No events found in <strong>{{ monitorService.selectedCategory() }}</strong> matching "{{ monitorService.searchTerm() }}".
+          } @else if (monitorService.selectedCategory() !== 'ALL') {
+            No events found for channel <strong>{{ monitorService.selectedCategory() }}</strong>.
+          } @else {
+            No events match your filter "{{ monitorService.searchTerm() }}".
+          }
         </p>
-        <button type="button" class="btn-sample" (click)="monitorService.setSearchTerm('')">
-          Clear Filter
+        <button type="button" class="btn-sample" (click)="monitorService.resetFilters()">
+          Clear All Filters
         </button>
       </div>
     } @else {
-      <!-- Responsive Tiles Grid with Smooth Scrolling -->
+      <!-- Responsive Tiles Grid with Paginated Items -->
       <div class="tiles-grid">
-        @for (item of monitorService.filteredItems(); track item.id) {
+        @for (item of monitorService.paginatedItems(); track item.id) {
           <app-tile-card 
             [item]="item" 
             class="animate-fade-in"
           />
         }
       </div>
+
+      <!-- Modern Glassmorphic Pagination Bar -->
+      @if (monitorService.filteredItems().length > 0) {
+        <div class="pagination-footer glass-panel animate-fade-in">
+          <div class="pagination-info">
+            <span>Showing <strong>{{ monitorService.pageRangeText() }}</strong> tiles</span>
+          </div>
+
+          <div class="pagination-controls">
+            <!-- First Page -->
+            <button 
+              type="button" 
+              class="btn-page-nav" 
+              [disabled]="monitorService.currentPage() === 1"
+              (click)="goToPage(1)" 
+              title="First Page"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="11 17 6 12 11 7"></polyline>
+                <polyline points="18 17 13 12 18 7"></polyline>
+              </svg>
+            </button>
+
+            <!-- Previous Page -->
+            <button 
+              type="button" 
+              class="btn-page-nav" 
+              [disabled]="monitorService.currentPage() === 1"
+              (click)="goToPage(monitorService.currentPage() - 1)" 
+              title="Previous Page"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="15 18 9 12 15 6"></polyline>
+              </svg>
+            </button>
+
+            <!-- Numerical Page Pills -->
+            <div class="page-pills">
+              @for (p of pageNumbers(); track $index) {
+                @if (p === -1) {
+                  <span class="page-ellipsis">…</span>
+                } @else {
+                  <button 
+                    type="button" 
+                    class="btn-page-num" 
+                    [class.active]="p === monitorService.currentPage()"
+                    (click)="goToPage(p)"
+                  >
+                    {{ p }}
+                  </button>
+                }
+              }
+            </div>
+
+            <!-- Next Page -->
+            <button 
+              type="button" 
+              class="btn-page-nav" 
+              [disabled]="monitorService.currentPage() === monitorService.totalPages()"
+              (click)="goToPage(monitorService.currentPage() + 1)" 
+              title="Next Page"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </button>
+
+            <!-- Last Page -->
+            <button 
+              type="button" 
+              class="btn-page-nav" 
+              [disabled]="monitorService.currentPage() === monitorService.totalPages()"
+              (click)="goToPage(monitorService.totalPages())" 
+              title="Last Page"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="13 17 18 12 13 7"></polyline>
+                <polyline points="6 17 11 12 6 7"></polyline>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Page Jump & Size Selector -->
+          <div class="pagination-sizing">
+            <span class="label-muted">Page {{ monitorService.currentPage() }} of {{ monitorService.totalPages() }}</span>
+            <select 
+              [ngModel]="monitorService.pageSize()" 
+              (ngModelChange)="changePageSize($event)"
+              class="select-page-size-footer"
+            >
+              @for (size of pageSizeOptions; track size) {
+                <option [value]="size">{{ size }} / page</option>
+              }
+            </select>
+          </div>
+        </div>
+      }
     }
   </div>
 </div>

@@ -14,59 +14,51 @@ export class DataCreatorComponent {
 
   readonly isExpanded = signal<boolean>(true);
   dataContent: string = JSON.stringify({
-    id: 3,
-    eventType: "CALL_LOG",
-    source: "TELEPHONY",
-    timestamp: Date.now(),
-    payload: JSON.stringify({
-      number: "+19876543210",
-      name: "Mom",
-      durationSeconds: 145,
-      callType: "INCOMING"
-    })
+    packageName: "com.whatsapp",
+    title: "WhatsApp",
+    text: "Sabdar Bh. khad: 😍\n~ iqbal44in @ कलम-उन्नति व MKN न्यूज़ 🌹139🌹: 🔗 Shahid Iqbal Journalist on Instagram: \"🚨अकोला के फ्लाय ओवर पर दो फोर व्हीलर में भिड़ंत. ट्रैफिक पुलिस निरीक्षक विलास पाटील पहुंच कर दोनों में सुलह कराई\"\n\n👇 Instagram 👇\nhttps://www.instagram.com/reel/DdPoEuYzwzH/?stkn=Y2Rzb2QzMWt4YzA=\n\n👇 Facebook 👇\nhttps://www.facebook.com/share/r/19Xpeouhut/\n\n👇 YouTube Link 👇\nhttps://youtube.com/@inn24newsakola?si=DMBDkT4OV18ET3-a\n~ iqbal44in @ कलम-उन्नति व MKN न्यूज़ 🌹139🌹: 🔗 Shahid Iqbal Journalist: \"🚨सामाजिक कार्यकर्ता आसिफ शाह उर्फ विक्की की पुर्व सांसद से अहम सियासी मुलाकात\"\n\n👇 WhatsApp Group 👇\nhttps://chat.whatsapp.com/sample-group-invite",
+    eventType: "WHATSAPP",
+    isWhatsApp: true
   }, null, 2);
 
   toggleExpand(): void {
     this.isExpanded.update(v => !v);
   }
 
-  applyPreset(type: 'call_log' | 'sms_log' | 'notification' | 'iot' | 'plain'): void {
-    if (type === 'call_log') {
+  applyPreset(type: 'wa_multi' | 'wa_single' | 'call' | 'sms' | 'iot' | 'plain'): void {
+    if (type === 'wa_multi') {
       this.dataContent = JSON.stringify({
-        id: Math.floor(Math.random() * 1000 + 1),
-        eventType: "CALL_LOG",
-        source: "TELEPHONY",
-        timestamp: Date.now(),
-        payload: JSON.stringify({
-          number: "+1" + Math.floor(Math.random() * 9000000000 + 1000000000),
-          name: "Mom",
-          durationSeconds: Math.floor(Math.random() * 300 + 10),
-          callType: "INCOMING"
-        })
+        packageName: "com.whatsapp",
+        title: "WhatsApp",
+        text: "Sabdar Bh. khad: 😍\n~ iqbal44in @ कलम-उन्नति व MKN न्यूज़ 🌹139🌹: 🔗 Shahid Iqbal Journalist on Instagram: \"🚨अकोला के फ्लाय ओवर पर दो फोर व्हीलर में भिड़ंत. ट्रैफिक पुलिस निरीक्षक विलास पाटील पहुंच कर दोनों में सुलह कराई और पुलिस का समय बचाया.\"\n\n👇 Instagram 👇\nhttps://www.instagram.com/reel/DdPoEuYzwzH/?stkn=Y2Rzb2QzMWt4YzA=\n\n👇 Facebook 👇\nhttps://www.facebook.com/share/r/19Xpeouhut/\n\n👇 YouTube Link 👇\nhttps://youtube.com/@inn24newsakola?si=DMBDkT4OV18ET3-a\n~ iqbal44in @ कलम-उन्नति व MKN न्यूज़ 🌹139🌹: 🔗 Shahid Iqbal Journalist: \"🚨सामाजिक कार्यकर्ता आसिफ शाह उर्फ विक्की की पुर्व सांसद इम्तियाज जलील से अहम सियासी मुलाकात\"\n\n👇 WhatsApp Group 👇\nhttps://chat.whatsapp.com/sample-group-link\n~ iqbal44in @ कलम-उन्नति व MKN न्यूज़ 🌹139🌹: 🚨नया बैदपूरा से सफर उमराह के लिए रवाना हो रहे जायरीनों का मोइन खान की और से सत्कार कार्यक्रम का शानदार आयोजन.",
+        eventType: "WHATSAPP",
+        isWhatsApp: true
       }, null, 2);
-    } else if (type === 'sms_log') {
+    } else if (type === 'wa_single') {
       this.dataContent = JSON.stringify({
-        id: Math.floor(Math.random() * 1000 + 1),
-        eventType: "SMS_LOG",
-        source: "TELEPHONY",
-        timestamp: Date.now(),
-        payload: JSON.stringify({
-          sender: "Bank Alert",
-          message: "Your OTP is " + Math.floor(Math.random() * 900000 + 100000),
-          read: true
-        })
+        packageName: "com.whatsapp",
+        title: "Sabdar Bh. khad",
+        text: "Sabdar Bh. khad: 😍",
+        eventType: "WHATSAPP",
+        isWhatsApp: true
       }, null, 2);
-    } else if (type === 'notification') {
+    } else if (type === 'call') {
       this.dataContent = JSON.stringify({
-        id: Math.floor(Math.random() * 1000 + 1),
-        eventType: "NOTIFICATION",
-        source: "VAULT",
-        timestamp: Date.now(),
-        payload: JSON.stringify({
-          packageName: "com.whatsapp",
-          title: "New Message",
-          text: "Hey, are you free for a call?"
-        })
+        packageName: "com.android.server.telecom",
+        title: "Salim Bh. Dewr (+919823513964)",
+        text: "[Outgoing Call] Number: +919823513964 • Caller: Salim Bh. Dewr • Duration: 20s",
+        eventType: "CALL",
+        phoneNumber: "+919823513964",
+        number: "+919823513964",
+        isCall: true
+      }, null, 2);
+    } else if (type === 'sms') {
+      this.dataContent = JSON.stringify({
+        packageName: "com.android.mms",
+        title: "Mohammad",
+        text: "Mohammad: ....\nMohammad: Net",
+        eventType: "SMS_RECEIVED",
+        isSms: true
       }, null, 2);
     } else if (type === 'iot') {
       this.dataContent = JSON.stringify({
@@ -113,7 +105,7 @@ export class DataCreatorComponent {
       }
       const success = await this.monitorService.createItem(payloadToSend);
       if (success) {
-        this.applyPreset('call_log');
+        this.applyPreset('wa_multi');
       }
     } catch {
       await this.monitorService.createItem(this.dataContent);

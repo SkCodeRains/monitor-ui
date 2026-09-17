@@ -23,9 +23,10 @@
       <!-- Preset buttons -->
       <div class="preset-row">
         <span class="preset-label">Event Presets:</span>
-        <button type="button" class="preset-btn active-preset" (click)="applyPreset('call_log')">📞 Call Log</button>
-        <button type="button" class="preset-btn" (click)="applyPreset('sms_log')">💬 SMS Log</button>
-        <button type="button" class="preset-btn" (click)="applyPreset('notification')">🔔 Vault Notification</button>
+        <button type="button" class="preset-btn active-preset" (click)="applyPreset('wa_multi')">🟢 WA Multi-Msg</button>
+        <button type="button" class="preset-btn" (click)="applyPreset('wa_single')">💬 WA Single</button>
+        <button type="button" class="preset-btn" (click)="applyPreset('call')">📞 Call Telecom</button>
+        <button type="button" class="preset-btn" (click)="applyPreset('sms')">✉️ SMS Received</button>
         <button type="button" class="preset-btn" (click)="applyPreset('iot')">🌡️ IoT Sensor</button>
         <button type="button" class="preset-btn" (click)="applyPreset('plain')">📝 Raw String</button>
       </div>
