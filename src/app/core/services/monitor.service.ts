@@ -145,6 +145,18 @@ export class MonitorService {
 
       if (response && response.success && Array.isArray(response.devices)) {
         this.devices.set(response.devices);
+
+        // Smart device selection: if on empty 'OTHER', auto-switch to active physical phone
+        if (this.selectedDevice() === 'OTHER') {
+          const otherDev = response.devices.find(d => (d.id === 'OTHER' || d.deviceId === 'OTHER'));
+          if (!otherDev || (otherDev.totalCount || 0) === 0) {
+            const activeDev = response.devices.find(d => d.id !== 'OTHER' && d.deviceId !== 'OTHER' && (d.totalCount || 0) > 0);
+            if (activeDev) {
+              this.selectedDevice.set(activeDev.id || activeDev.deviceId);
+              this.loadItems();
+            }
+          }
+        }
       }
     } catch (err: any) {
       console.warn('Could not fetch devices list:', err);
