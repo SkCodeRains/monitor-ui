@@ -15,6 +15,32 @@
   </div>
 
   <div class="device-tabs-container" role="tablist" aria-label="Device Tabs">
+    <!-- All Devices Unified Tab -->
+    <button
+      type="button"
+      role="tab"
+      id="device-tab-all"
+      [attr.aria-selected]="isDeviceActive('ALL')"
+      class="device-tab tab-all-devices"
+      [class.active]="isDeviceActive('ALL')"
+      (click)="selectDevice('ALL')"
+      title="View telemetry across all connected phones and sources"
+    >
+      <span class="tab-phone-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+          <line x1="8" y1="21" x2="16" y2="21"></line>
+          <line x1="12" y1="17" x2="12" y2="21"></line>
+        </svg>
+      </span>
+
+      <span class="tab-label">All Devices</span>
+
+      <span class="tab-counter" [class.has-count]="getTotalAllDevicesCount() > 0">
+        {{ getTotalAllDevicesCount() }}
+      </span>
+    </button>
+
     @for (dev of monitorService.devices(); track (dev.id || dev.deviceId)) {
       @let devKey = dev.id || dev.deviceId || 'OTHER';
       <button
@@ -45,7 +71,23 @@
   </div>
 
   <!-- Live Daily Data Usage & Screen Time Bar for Currently Active Device -->
-  @if (getActiveDevice(); as currentDevice) {
+  @if (isDeviceActive('ALL')) {
+    <div class="active-device-data-bar all-devices-info-bar">
+      <div class="data-bar-left">
+        <span class="data-icon-badge all">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+            <line x1="8" y1="21" x2="16" y2="21"></line>
+            <line x1="12" y1="17" x2="12" y2="21"></line>
+          </svg>
+        </span>
+        <span class="data-bar-label">All Devices Feed</span>
+        <span class="all-note">
+          Viewing unified live stream from all connected devices (Total: <strong>{{ getTotalAllDevicesCount() }}</strong> events). Click any device tab above to isolate its logs or view its mobile data usage & screen time.
+        </span>
+      </div>
+    </div>
+  } @else if (getActiveDevice(); as currentDevice) {
     @if (currentDevice.id === 'OTHER' || currentDevice.deviceId === 'OTHER') {
       <div class="active-device-data-bar legacy-info-bar">
         <div class="data-bar-left">

@@ -40,7 +40,7 @@ export class MonitorService {
   readonly devices = signal<Device[]>([
     { id: 'OTHER', deviceId: 'OTHER', name: 'Other / Vivo (Legacy)', totalCount: 0 }
   ]);
-  readonly selectedDevice = signal<string>('OTHER');
+  readonly selectedDevice = signal<string>('ALL');
 
   // Server-Side Pagination State Signals
   readonly pageSize = signal<number>(100);
@@ -69,6 +69,7 @@ export class MonitorService {
 
   readonly currentDeviceName = computed(() => {
     const curId = this.selectedDevice();
+    if (curId === 'ALL') return 'All Devices';
     const found = this.devices().find(d => d.id === curId || d.deviceId === curId);
     return found ? found.name : curId;
   });
@@ -145,18 +146,6 @@ export class MonitorService {
 
       if (response && response.success && Array.isArray(response.devices)) {
         this.devices.set(response.devices);
-
-        // Smart device selection: if on empty 'OTHER', auto-switch to active physical phone
-        if (this.selectedDevice() === 'OTHER') {
-          const otherDev = response.devices.find(d => (d.id === 'OTHER' || d.deviceId === 'OTHER'));
-          if (!otherDev || (otherDev.totalCount || 0) === 0) {
-            const activeDev = response.devices.find(d => d.id !== 'OTHER' && d.deviceId !== 'OTHER' && (d.totalCount || 0) > 0);
-            if (activeDev) {
-              this.selectedDevice.set(activeDev.id || activeDev.deviceId);
-              this.loadItems();
-            }
-          }
-        }
       }
     } catch (err: any) {
       console.warn('Could not fetch devices list:', err);

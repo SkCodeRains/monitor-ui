@@ -26,6 +26,10 @@ export class DeviceTabsComponent {
     return this.monitorService.devices().find(d => d.id === activeId || d.deviceId === activeId);
   }
 
+  getTotalAllDevicesCount(): number {
+    return this.monitorService.devices().reduce((sum, d) => sum + (d.totalCount || 0), 0);
+  }
+
   toggleAppUsage(): void {
     this.showAppUsage = !this.showAppUsage;
   }

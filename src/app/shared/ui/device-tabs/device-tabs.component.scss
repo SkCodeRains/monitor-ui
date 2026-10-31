@@ -163,6 +163,24 @@
   background: rgba(15, 23, 42, 0.55);
   border: 1px solid rgba(255, 255, 255, 0.05);
 
+  &.all-devices-info-bar {
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.25);
+
+    .data-icon-badge.all {
+      background: rgba(99, 102, 241, 0.2);
+      color: #a5b4fc;
+    }
+
+    .all-note {
+      font-size: 0.78rem;
+      color: #cbd5e1;
+      strong {
+        color: #818cf8;
+      }
+    }
+  }
+
   &.legacy-info-bar {
     background: rgba(30, 41, 59, 0.4);
     border: 1px dashed rgba(255, 255, 255, 0.12);
