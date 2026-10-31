@@ -210,8 +210,12 @@ export class NotificationParserService {
       if (currentBubble) {
         currentBubble.lines.push(line);
       } else {
+        const isSummary = /^(\d+)\s+new\s+messages?/i.test(line.trim());
+        const sender = isSummary
+          ? 'WhatsApp Alert'
+          : ((defaultTitle && defaultTitle !== 'WhatsApp') ? defaultTitle : 'WhatsApp Message');
         currentBubble = {
-          sender: (defaultTitle && defaultTitle !== 'WhatsApp') ? defaultTitle : 'Sender',
+          sender: sender,
           lines: [line]
         };
       }

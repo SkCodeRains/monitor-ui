@@ -38,6 +38,52 @@ export class TileCardComponent {
     return id.length > 10 ? `${id.substring(0, 8)}...` : id;
   }
 
+  getDeviceBadge(): string {
+    const item = this.item();
+    return item.deviceName || item.deviceId || '';
+  }
+
+  getDisplayLogId(): string {
+    const item = this.item();
+    const logId = item.clientLogId || item.id;
+    if (logId) {
+      const parts = logId.split('_');
+      const num = parts.find((p: string) => /^\d{1,7}$/.test(p));
+      return num ? `#${num}` : `#${this.formatDisplayId(logId)}`;
+    }
+    return '';
+  }
+
+  getMetadataChips(): { label: string; value: string }[] {
+    const chips: { label: string; value: string }[] = [];
+    const it = this.item();
+
+    const pkg = it.packageName || it.source;
+    if (pkg && pkg !== 'CLIENT' && pkg !== 'TELEPHONY') {
+      chips.push({ label: 'pkg', value: pkg });
+    }
+
+    const raw = this.displayPayload();
+    if (typeof raw === 'object' && raw !== null) {
+      if (raw.number || raw.phoneNumber) chips.push({ label: 'Phone', value: String(raw.number || raw.phoneNumber) });
+      if (raw.durationSeconds) chips.push({ label: 'Duration', value: `${raw.durationSeconds}s` });
+      if (raw.direction) chips.push({ label: 'Dir', value: String(raw.direction) });
+    } else if (typeof raw === 'string') {
+      try {
+        const parsed = JSON.parse(raw);
+        if (typeof parsed === 'object' && parsed !== null) {
+          if (parsed.number || parsed.phoneNumber) chips.push({ label: 'Phone', value: String(parsed.number || parsed.phoneNumber) });
+          if (parsed.durationSeconds) chips.push({ label: 'Duration', value: `${parsed.durationSeconds}s` });
+          if (parsed.direction) chips.push({ label: 'Dir', value: String(parsed.direction) });
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    return chips;
+  }
+
   getFormattedPayload(): string {
     const raw = this.displayPayload();
     if (typeof raw === 'object' && raw !== null) {
@@ -131,11 +177,35 @@ export class TileCardComponent {
     window.open(url, '_blank', 'noopener,noreferrer');
   }
 
+  getEventTime(): string | number | Date {
+    const item = this.item();
+    if (item.timestamp !== undefined && item.timestamp !== null) {
+      const num = Number(item.timestamp);
+      return !isNaN(num) && num > 0 ? num : item.timestamp;
+    }
+    return item.createdAt;
+  }
+
   formatExactTime(dateVal: string | number | Date | undefined): string {
     if (!dateVal) return '';
     const d = new Date(dateVal);
     if (isNaN(d.getTime())) return '';
     return d.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    });
+  }
+
+  formatFullDateTime(dateVal: string | number | Date | undefined): string {
+    if (!dateVal) return '';
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',

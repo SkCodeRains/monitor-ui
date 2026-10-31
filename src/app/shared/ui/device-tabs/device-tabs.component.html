@@ -1,0 +1,181 @@
+<div class="device-tabs-panel glass-panel">
+  <div class="device-header">
+    <div class="header-left">
+      <div class="device-icon-wrapper">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <rect x="5" y="2" width="14" height="20" rx="3" ry="3"></rect>
+          <line x1="12" y1="18" x2="12.01" y2="18"></line>
+        </svg>
+      </div>
+      <span class="device-title">Monitored Phones</span>
+    </div>
+    <div class="header-right">
+      <span class="device-count-pill">{{ monitorService.devices().length }} Phone{{ monitorService.devices().length > 1 ? 's' : '' }} Connected</span>
+    </div>
+  </div>
+
+  <div class="device-tabs-container" role="tablist" aria-label="Device Tabs">
+    @for (dev of monitorService.devices(); track (dev.id || dev.deviceId)) {
+      @let devKey = dev.id || dev.deviceId || 'OTHER';
+      <button
+        type="button"
+        role="tab"
+        [id]="'device-tab-' + devKey.toLowerCase()"
+        [attr.aria-selected]="isDeviceActive(devKey)"
+        class="device-tab"
+        [class.active]="isDeviceActive(devKey)"
+        (click)="selectDevice(devKey)"
+        [title]="'View telemetry from ' + dev.name"
+      >
+        <span class="tab-phone-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <rect x="5" y="2" width="14" height="20" rx="3" ry="3"></rect>
+            <line x1="12" y1="18" x2="12.01" y2="18"></line>
+          </svg>
+          <span class="online-dot"></span>
+        </span>
+
+        <span class="tab-label">{{ dev.name }}</span>
+
+        <span class="tab-counter" [class.has-count]="(dev.totalCount || 0) > 0">
+          {{ dev.totalCount || 0 }}
+        </span>
+      </button>
+    }
+  </div>
+
+  <!-- Live Daily Data Usage & Screen Time Bar for Currently Active Device -->
+  @if (getActiveDevice(); as currentDevice) {
+    <div class="active-device-data-bar">
+      <div class="data-bar-left">
+        <span class="data-icon-badge">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <line x1="18" y1="20" x2="18" y2="10"></line>
+            <line x1="12" y1="20" x2="12" y2="4"></line>
+            <line x1="6" y1="20" x2="6" y2="14"></line>
+          </svg>
+        </span>
+        <span class="data-bar-label">Today's Data:</span>
+      </div>
+
+      <div class="data-stat-pills">
+        <!-- Mobile Data -->
+        <span class="data-pill mobile" title="Cellular Data used today">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M2 20h20"></path>
+            <path d="M5 20v-4"></path>
+            <path d="M9 20v-8"></path>
+            <path d="M13 20V8"></path>
+            <path d="M17 20V4"></path>
+          </svg>
+          <span class="pill-val">{{ formatBytes(currentDevice.dataUsage?.mobileBytes) }}</span>
+          <span class="pill-tag">Mobile</span>
+        </span>
+
+        <!-- Wi-Fi Data -->
+        <span class="data-pill wifi" title="Wi-Fi Data used today">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
+            <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
+            <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+            <circle cx="12" cy="20" r="1"></circle>
+          </svg>
+          <span class="pill-val">{{ formatBytes(currentDevice.dataUsage?.wifiBytes) }}</span>
+          <span class="pill-tag">Wi-Fi</span>
+        </span>
+
+        <!-- Total Data -->
+        <span class="data-pill total" title="Total Network Data (Mobile + Wi-Fi) today">
+          <span class="pill-tag">Total:</span>
+          <span class="pill-val highlight">{{ formatBytes(currentDevice.dataUsage?.totalBytes) }}</span>
+        </span>
+
+        <!-- Toggle Screen Time Button -->
+        <button
+          type="button"
+          class="screen-time-toggle-btn"
+          [class.active]="showAppUsage"
+          (click)="toggleAppUsage()"
+          [title]="showAppUsage ? 'Hide Screen Time breakdown' : 'View App Screen Time breakdown'"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          <span>Screen Time</span>
+          @if (currentDevice.appUsage && currentDevice.appUsage.length > 0) {
+            <span class="apps-count-badge">{{ currentDevice.appUsage.length }}</span>
+          }
+        </button>
+
+        <!-- Sync Time (Every 3 hours) -->
+        <span class="data-sync-time" title="Periodic sync every 3 hours">
+          <span class="sync-dot"></span>
+          {{ formatLastUpdated(currentDevice.dataUsage?.lastUpdated) }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Expandable App Screen Time & Usage Breakdown -->
+    @if (showAppUsage) {
+      <div class="app-usage-dropdown">
+        <div class="usage-header">
+          <div class="usage-title-group">
+            <span class="usage-icon">📱</span>
+            <h4>Daily App Screen Time (Foreground & Background Service)</h4>
+          </div>
+          <span class="usage-device-tag">{{ currentDevice.name }}</span>
+        </div>
+
+        @if (currentDevice.appUsage && currentDevice.appUsage.length > 0) {
+          @let maxMs = getMaxForegroundMs(currentDevice.appUsage);
+          <div class="app-usage-list">
+            @for (app of currentDevice.appUsage; track app.packageName; let idx = $index) {
+              <div class="app-usage-row">
+                <div class="app-rank">#{{ idx + 1 }}</div>
+
+                <div class="app-icon-circle">
+                  {{ (app.appName || app.packageName).charAt(0).toUpperCase() }}
+                </div>
+
+                <div class="app-info-block">
+                  <div class="app-name-line">
+                    <span class="app-name">{{ app.appName || app.packageName }}</span>
+                    <span class="app-pkg">{{ app.packageName }}</span>
+                  </div>
+
+                  <div class="usage-progress-track">
+                    <div
+                      class="usage-progress-fill"
+                      [style.width.%]="getUsagePercent(app.foregroundTimeMs, maxMs)"
+                    ></div>
+                  </div>
+                </div>
+
+                <div class="app-time-badge-group">
+                  <span class="time-pill foreground" title="Screen-on Foreground Time">
+                    <span class="dot fg-dot"></span>
+                    {{ formatDuration(app.foregroundTimeMs) }}
+                  </span>
+
+                  @if (app.serviceRunningTimeMs && app.serviceRunningTimeMs > 0) {
+                    <span class="time-pill background" title="Active Background Service Time">
+                      <span class="dot bg-dot"></span>
+                      {{ formatDuration(app.serviceRunningTimeMs) }} bg
+                    </span>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="empty-usage-state">
+            <span class="empty-icon">⏳</span>
+            <p>No app screen time reported yet for this device.</p>
+            <span class="empty-hint">Usage stats update automatically every 3 hours when the app syncs.</span>
+          </div>
+        }
+      </div>
+    }
+  }
+</div>

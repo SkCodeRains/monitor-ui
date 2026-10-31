@@ -6,6 +6,12 @@
       <span class="section-counter">
         Showing {{ monitorService.pageRangeText() }} tiles (Total: {{ monitorService.totalCount() }})
       </span>
+      @if (monitorService.isLoading()) {
+        <span class="loading-badge animate-fade-in" role="status" aria-live="polite">
+          <span class="mini-spinner" aria-hidden="true"></span>
+          <span>{{ monitorService.items().length === 0 ? 'Loading data...' : 'Syncing...' }}</span>
+        </span>
+      }
     </div>
 
     <div class="header-controls">
@@ -55,12 +61,19 @@
   <!-- Main Scrollable Grid Area -->
   <div #scrollContainer class="scroll-container">
     @if (monitorService.isLoading() && monitorService.items().length === 0) {
-      <!-- Loading State -->
+      <!-- Initial Loading State -->
       <div class="loading-state glass-panel animate-fade-in">
-        <div class="spinner"></div>
-        <p>Fetching data from Express array...</p>
+        <div class="spinner" aria-hidden="true"></div>
+        <p>Fetching data for {{ monitorService.currentDeviceName() }}...</p>
       </div>
-    } @else if (monitorService.totalCount() === 0) {
+    } @else {
+      @if (monitorService.isLoading()) {
+        <div class="inline-loader-bar animate-fade-in" role="progressbar" aria-label="Loading data">
+          <div class="inline-loader-progress"></div>
+        </div>
+      }
+
+      @if (monitorService.totalCount() === 0) {
       <!-- Empty State (No items in array) -->
       <div class="empty-state glass-panel animate-fade-in">
         <div class="empty-icon">
@@ -106,7 +119,7 @@
       </div>
     } @else {
       <!-- Responsive Tiles Grid with Paginated Items -->
-      <div class="tiles-grid">
+      <div class="tiles-grid" [class.grid-faded]="monitorService.isLoading()">
         @for (item of monitorService.paginatedItems(); track item.id) {
           <app-tile-card 
             [item]="item" 
@@ -212,5 +225,6 @@
         </div>
       }
     }
+  }
   </div>
 </div>

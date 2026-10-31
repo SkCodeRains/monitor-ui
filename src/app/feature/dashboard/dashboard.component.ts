@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { DataCreatorComponent } from '@shared/features/data-creator/data-creator.component';
+import { DeviceTabsComponent } from '@shared/ui/device-tabs/device-tabs.component';
 import { ToolbarComponent } from '@shared/ui/toolbar/toolbar.component';
 import { FilterPanelComponent } from '@shared/ui/filter-panel/filter-panel.component';
 import { TileGridComponent } from '@shared/features/tile-grid/tile-grid.component';
@@ -9,6 +9,7 @@ import { TileGridComponent } from '@shared/features/tile-grid/tile-grid.componen
   selector: 'app-dashboard-page',
   imports: [
     CommonModule,
+    DeviceTabsComponent,
     ToolbarComponent,
     FilterPanelComponent,
     TileGridComponent

@@ -1,5 +1,34 @@
 export type NotificationCategory = 'ALL' | 'WHATSAPP' | 'CALL' | 'SMS' | 'NOTIFICATION' | 'OTHER';
 
+export interface AppUsageStat {
+  packageName: string;
+  appName: string;
+  foregroundTimeMs: number;
+  serviceRunningTimeMs?: number;
+  lastTimeUsed?: string | Date | null;
+}
+
+export interface DataUsage {
+  mobileBytes: number;
+  wifiBytes: number;
+  totalBytes: number;
+  lastUpdated?: string | Date | null;
+}
+
+export interface Device {
+  id: string;
+  deviceId: string;
+  name: string;
+  brand?: string;
+  model?: string;
+  osVersion?: string;
+  firstSeen?: string;
+  lastSeen?: string;
+  totalCount?: number;
+  dataUsage?: DataUsage;
+  appUsage?: AppUsageStat[];
+}
+
 export interface ParsedSocialLink {
   url: string;
   label: string;
@@ -56,6 +85,8 @@ export interface ParsedNotificationData {
 
 export interface MonitorItem {
   id: string;
+  deviceId?: string;
+  deviceName?: string;
   eventType?: string;
   source?: string;
   timestamp?: number | string;
@@ -70,6 +101,7 @@ export interface MonitorItem {
   isSms?: boolean;
   phoneNumber?: string;
   number?: string;
+  clientLogId?: string;
   [key: string]: any;
 }
 
@@ -89,6 +121,8 @@ export interface ApiResponse<T = any> {
   hasNextPage?: boolean;
   hasPrevPage?: boolean;
   categoryCounts?: Record<NotificationCategory, number>;
+  devices?: Device[];
+  device?: string;
   error?: string;
   details?: string;
 }

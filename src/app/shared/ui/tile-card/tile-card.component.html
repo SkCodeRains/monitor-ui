@@ -53,6 +53,17 @@
         <span>{{ getAppBadgeInfo().label }}</span>
       </span>
 
+      <!-- Device Pill (shows which phone sent the notification) -->
+      @if (getDeviceBadge()) {
+        <span class="device-pill" title="Device: {{ getDeviceBadge() }}">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <rect x="5" y="2" width="14" height="20" rx="3" ry="3"></rect>
+            <line x1="12" y1="18" x2="12.01" y2="18"></line>
+          </svg>
+          <span class="device-name">{{ getDeviceBadge() }}</span>
+        </span>
+      }
+
       <!-- Unique ID Pill with Click-to-Copy -->
       <button 
         type="button" 
@@ -60,7 +71,7 @@
         (click)="copyId($event)" 
         title="Copy ID: {{ item().id }}"
       >
-        <span class="id-mono">#{{ formatDisplayId(item().id) }}</span>
+        <span class="id-mono">{{ getDisplayLogId() }}</span>
         <svg class="copy-tiny" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
           <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
           <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -119,17 +130,29 @@
       </button>
 
       <!-- Right Corner Time Badge: Hour, Min, Sec + Live Ago Time -->
-      <div class="time-corner-badge" [title]="'Event: ' + (item().createdAt || item().timestamp)">
+      <div class="time-corner-badge" [title]="'Event: ' + formatFullDateTime(getEventTime())">
         <svg class="clock-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
           <circle cx="12" cy="12" r="10"></circle>
           <polyline points="12 6 12 12 16 14"></polyline>
         </svg>
-        <span class="time-clock">{{ formatExactTime(item().createdAt || item().timestamp) }}</span>
+        <span class="time-clock">{{ formatExactTime(getEventTime()) }}</span>
         <span class="time-divider">•</span>
-        <span class="time-ago">{{ (item().createdAt || item().timestamp) | timeAgo: monitorService.nowTick() }}</span>
+        <span class="time-ago">{{ getEventTime() | timeAgo: monitorService.nowTick() }}</span>
       </div>
     </div>
   </div>
+
+  <!-- Metadata chips (e.g. phone number, call duration, direction, package) -->
+  @if (getMetadataChips().length > 0) {
+    <div class="card-meta-chips">
+      @for (chip of getMetadataChips(); track chip.label) {
+        <span class="meta-chip">
+          <span class="chip-key">{{ chip.label }}</span>
+          <span class="chip-val">{{ chip.value }}</span>
+        </span>
+      }
+    </div>
+  }
 
   <!-- Smart View Display -->
   @if (viewMode() === 'smart') {

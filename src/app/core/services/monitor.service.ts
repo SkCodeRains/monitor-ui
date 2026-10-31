@@ -1,12 +1,14 @@
 import { Injectable, inject, signal, computed, effect } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { firstValueFrom } from 'rxjs';
+import { HttpClient, HttpContext } from '@angular/common/http';
+import { firstValueFrom, Subscription } from 'rxjs';
 import { environment } from '@env/environment';
-import { MonitorItem, ApiResponse, NotificationCategory } from '@model';
+import { MonitorItem, ApiResponse, NotificationCategory, Device } from '@model';
 import { ToastService } from './toast.service';
 import { TrashService } from './trash.service';
 import { AuthService } from './auth.service';
 import { NotificationParserService } from './notification-parser.service';
+import { SKIP_LOADER } from '../interceptors/loading.interceptor';
+
 
 @Injectable({
   providedIn: 'root'
@@ -31,10 +33,17 @@ export class MonitorService {
   readonly isAutoRefreshEnabled = signal<boolean>(false);
   readonly nowTick = signal<number>(Date.now());
   private pollingTimer: any = null;
-  private searchDebounceTimer: any = null;
+  private loadItemsSub: Subscription | null = null;
+  private cancelPreviousLoad: (() => void) | null = null;
+
+  // Multi-Device State Signals
+  readonly devices = signal<Device[]>([
+    { id: 'OTHER', deviceId: 'OTHER', name: 'Other / Vivo (Legacy)', totalCount: 0 }
+  ]);
+  readonly selectedDevice = signal<string>('OTHER');
 
   // Server-Side Pagination State Signals
-  readonly pageSize = signal<number>(25);
+  readonly pageSize = signal<number>(100);
   readonly currentPage = signal<number>(1);
   readonly serverTotalItems = signal<number>(0);
   readonly serverTotalPages = signal<number>(1);
@@ -57,6 +66,12 @@ export class MonitorService {
   // map directly to the current page slice returned by the backend
   readonly filteredItems = computed(() => this.items());
   readonly paginatedItems = computed(() => this.items());
+
+  readonly currentDeviceName = computed(() => {
+    const curId = this.selectedDevice();
+    const found = this.devices().find(d => d.id === curId || d.deviceId === curId);
+    return found ? found.name : curId;
+  });
 
   readonly pageRangeText = computed(() => {
     const total = this.serverTotalItems();
@@ -84,20 +99,17 @@ export class MonitorService {
   });
 
   constructor() {
-    // Initial fetch if user is authenticated
-    if (this.auth.isAuthenticated()) {
-      this.loadItems();
-    }
-
-    // Effect: on auth token change, reload items
+    // Effect: on auth token change, load items & devices
     effect(() => {
       const token = this.auth.token();
       if (token) {
-        this.loadItems(true);
+        this.loadDevices();
+        this.loadItems();
       } else {
         this.items.set([]);
         this.serverTotalItems.set(0);
         this.serverTotalPages.set(1);
+        this.isLoading.set(false);
       }
     });
 
@@ -106,6 +118,39 @@ export class MonitorService {
       this.nowTick.set(Date.now());
     }, 1000);
   }
+
+  /**
+   * Select a specific device tab (e.g. 'OTHER', 'moto_g37', 'iqoo')
+   */
+  setDevice(deviceId: string): void {
+    if (this.selectedDevice() !== deviceId) {
+      this.selectedDevice.set(deviceId);
+      this.selectedIds.set(new Set<string>());
+      this.currentPage.set(1);
+      this.loadItems();
+    }
+  }
+
+  /**
+   * Fetch list of registered devices from GET /api/devices
+   */
+  async loadDevices(silent = true): Promise<void> {
+    if (!this.auth.isAuthenticated()) return;
+
+    try {
+      const context = new HttpContext().set(SKIP_LOADER, true);
+      const response = await firstValueFrom(
+        this.http.get<ApiResponse<Device[]>>(`${this.apiUrl}/devices`, { context })
+      );
+
+      if (response && response.success && Array.isArray(response.devices)) {
+        this.devices.set(response.devices);
+      }
+    } catch (err: any) {
+      console.warn('Could not fetch devices list:', err);
+    }
+  }
+
 
   /**
    * Server-Side Pagination Controls
@@ -140,28 +185,27 @@ export class MonitorService {
   }
 
   setSearchTerm(term: string): void {
-    this.searchTerm.set(term);
-    this.currentPage.set(1);
-    if (this.searchDebounceTimer) {
-      clearTimeout(this.searchDebounceTimer);
-    }
-    this.searchDebounceTimer = setTimeout(() => {
+    const trimmed = term.trim();
+    if (this.searchTerm() !== trimmed) {
+      this.searchTerm.set(trimmed);
+      this.currentPage.set(1);
       this.loadItems();
-    }, 300);
+    }
   }
 
   setCategory(category: NotificationCategory): void {
-    this.selectedCategory.set(category);
-    this.currentPage.set(1);
-    this.loadItems();
+    if (this.selectedCategory() !== category) {
+      this.selectedCategory.set(category);
+      this.selectedIds.set(new Set<string>());
+      this.currentPage.set(1);
+      this.loadItems();
+    }
   }
 
   resetFilters(): void {
-    if (this.searchDebounceTimer) {
-      clearTimeout(this.searchDebounceTimer);
-    }
     this.selectedCategory.set('ALL');
     this.searchTerm.set('');
+    this.selectedIds.set(new Set<string>());
     this.currentPage.set(1);
     this.loadItems();
   }
@@ -185,7 +229,8 @@ export class MonitorService {
     this.stopPolling();
     this.pollingTimer = setInterval(() => {
       if (this.auth.isAuthenticated() && !this.isLoading()) {
-        this.loadItems(true); // silent background fetch
+        this.loadDevices(true);
+        this.loadItems(true);
       }
     }, 10000);
   }
@@ -198,19 +243,35 @@ export class MonitorService {
   }
 
   /**
-   * Fetch paginated items from GET /api/data?page=X&limit=Y&category=Z&search=W
+   * Fetch paginated items from GET /api/data?device=X&page=Y&limit=Z&category=W&search=S
+   * Automatically cancels any previous in-flight request when user selects another tab or filter.
    */
-  async loadItems(silent = false): Promise<void> {
+  loadItems(silent = false): Promise<void> {
     if (!this.auth.isAuthenticated()) {
-      return;
+      return Promise.resolve();
+    }
+
+    // Cancel in-flight HTTP request if one is running
+    if (this.cancelPreviousLoad) {
+      this.cancelPreviousLoad();
+      this.cancelPreviousLoad = null;
     }
 
     if (!silent) {
       this.isLoading.set(true);
     }
 
-    try {
+    return new Promise<void>((resolve) => {
+      this.cancelPreviousLoad = () => {
+        if (this.loadItemsSub) {
+          this.loadItemsSub.unsubscribe();
+          this.loadItemsSub = null;
+        }
+        resolve();
+      };
+
       const params: Record<string, string | number> = {
+        device: this.selectedDevice(),
         page: this.currentPage(),
         limit: this.pageSize()
       };
@@ -225,56 +286,70 @@ export class MonitorService {
         params['search'] = search;
       }
 
-      const response = await firstValueFrom(
-        this.http.get<ApiResponse<MonitorItem[]>>(`${this.apiUrl}/data`, { params })
-      );
+      // Always skip global ngx-ui-loader for data fetching so the whole app never freezes
+      const context = new HttpContext().set(SKIP_LOADER, true);
 
-      if (response && response.success && Array.isArray(response.data)) {
-        this.items.set(response.data);
-        this.isBackendOnline.set(true);
-        this.lastSynced.set(new Date());
+      this.loadItemsSub = this.http
+        .get<ApiResponse<MonitorItem[]>>(`${this.apiUrl}/data`, { params, context })
+        .subscribe({
+          next: (response) => {
+            this.loadItemsSub = null;
+            this.cancelPreviousLoad = null;
 
-        if (response.totalItems !== undefined) {
-          this.serverTotalItems.set(response.totalItems);
-        }
-        if (response.totalPages !== undefined) {
-          this.serverTotalPages.set(response.totalPages);
-        }
-        if (response.categoryCounts) {
-          this.serverCategoryCounts.set(response.categoryCounts);
-        }
+            if (response && response.success && Array.isArray(response.data)) {
+              this.items.set(response.data);
+              this.isBackendOnline.set(true);
+              this.lastSynced.set(new Date());
 
-        const validIds = new Set(response.data.map(i => i.id));
-        this.selectedIds.update(current => {
-          const next = new Set<string>();
-          current.forEach(id => {
-            if (validIds.has(id)) next.add(id);
-          });
-          return next;
+              if (response.totalItems !== undefined) {
+                this.serverTotalItems.set(response.totalItems);
+              }
+              if (response.totalPages !== undefined) {
+                this.serverTotalPages.set(response.totalPages);
+              }
+              if (response.categoryCounts) {
+                this.serverCategoryCounts.set(response.categoryCounts);
+              }
+
+              const validIds = new Set(response.data.map(i => i.id));
+              this.selectedIds.update(current => {
+                const next = new Set<string>();
+                current.forEach(id => {
+                  if (validIds.has(id)) next.add(id);
+                });
+                return next;
+              });
+
+              if (!silent) {
+                this.toast.success(
+                  'Refreshed',
+                  `Loaded page ${response.page || this.currentPage()} (${response.data.length} items, ${response.totalItems ?? response.data.length} total) for ${this.currentDeviceName()}.`
+                );
+              }
+            }
+            this.isLoading.set(false);
+            resolve();
+          },
+          error: (err: any) => {
+            this.loadItemsSub = null;
+            this.cancelPreviousLoad = null;
+            this.isBackendOnline.set(false);
+            console.error('Error fetching items:', err);
+            if (!silent) {
+              if (err.status === 401 || err.status === 403) {
+                this.auth.logout(false);
+              } else {
+                this.toast.error(
+                  'Connection Error',
+                  `Cannot reach backend server at ${this.apiUrl}. Please verify server is running.`
+                );
+              }
+            }
+            this.isLoading.set(false);
+            resolve();
+          }
         });
-
-        if (!silent) {
-          this.toast.success('Refreshed', `Loaded page ${response.page || this.currentPage()} (${response.data.length} items, ${response.totalItems ?? response.data.length} total).`);
-        }
-      }
-    } catch (err: any) {
-      this.isBackendOnline.set(false);
-      console.error('Error fetching items:', err);
-      if (!silent) {
-        if (err.status === 401 || err.status === 403) {
-          this.auth.logout(false);
-        } else {
-          this.toast.error(
-            'Connection Error',
-            `Cannot reach backend server at ${this.apiUrl}. Please verify server is running.`
-          );
-        }
-      }
-    } finally {
-      if (!silent) {
-        this.isLoading.set(false);
-      }
-    }
+    });
   }
 
   /**
@@ -295,6 +370,7 @@ export class MonitorService {
       );
 
       if (response && response.success && response.item) {
+        await this.loadDevices();
         await this.loadItems(true);
         this.toast.success('Created', 'New event tile added to the stream.');
         this.lastSynced.set(new Date());
@@ -327,6 +403,7 @@ export class MonitorService {
         if (itemToDelete) {
           this.trash.moveToTrash(itemToDelete);
         }
+        await this.loadDevices();
         await this.loadItems(true);
         this.selectedIds.update(current => {
           const next = new Set(current);
@@ -378,6 +455,7 @@ export class MonitorService {
       this.trash.moveToTrash(itemsToDelete);
     }
 
+    await this.loadDevices();
     await this.loadItems(true);
     this.selectedIds.set(new Set());
     this.isLoading.set(false);
@@ -385,9 +463,61 @@ export class MonitorService {
   }
 
   /**
-   * Delete all items via DELETE /api/data/all
+   * Delete all items for a specific device (defaults to currently selected device)
    */
-  async deleteAll(): Promise<boolean> {
+  async deleteDeviceData(deviceId?: string): Promise<boolean> {
+    const targetDevice = deviceId || this.selectedDevice();
+    const targetName = this.devices().find(d => d.id === targetDevice || d.deviceId === targetDevice)?.name || targetDevice;
+    const allItems = [...this.items()];
+    this.isLoading.set(true);
+
+    try {
+      const response = await firstValueFrom(
+        this.http.delete<ApiResponse<any>>(`${this.apiUrl}/data/all`, {
+          params: { device: targetDevice }
+        })
+      );
+
+      if (response && response.success) {
+        if (allItems.length > 0) {
+          this.trash.moveToTrash(allItems);
+        }
+        this.items.set([]);
+        this.serverTotalItems.set(0);
+        this.serverTotalPages.set(1);
+        this.serverCategoryCounts.set({
+          ALL: 0,
+          WHATSAPP: 0,
+          CALL: 0,
+          SMS: 0,
+          NOTIFICATION: 0,
+          OTHER: 0
+        });
+        this.selectedIds.set(new Set());
+        await this.loadDevices(true);
+        await this.loadItems(true);
+        this.toast.warning('Device Cleared', `Deleted all records for ${targetName} and archived in Trash.`);
+        this.lastSynced.set(new Date());
+        return true;
+      }
+      return false;
+    } catch (err: any) {
+      console.error(`Error clearing data for device ${targetDevice}:`, err);
+      if (err.status === 401 || err.status === 403) {
+        this.auth.logout(false);
+      } else {
+        this.toast.error('Failed', err?.error?.error || `Could not clear records for ${targetName}.`);
+      }
+      return false;
+    } finally {
+      this.isLoading.set(false);
+    }
+  }
+
+  /**
+   * Delete ALL items across ALL devices
+   */
+  async deleteAllDevicesData(): Promise<boolean> {
     const allItems = [...this.items()];
     this.isLoading.set(true);
 
@@ -412,22 +542,34 @@ export class MonitorService {
           OTHER: 0
         });
         this.selectedIds.set(new Set());
-        this.toast.warning('Store Cleared', `Deleted all items from server and archived in Trash.`);
+        await this.loadDevices(true);
+        await this.loadItems(true);
+        this.toast.warning('All Devices Cleared', `Deleted all items across ALL devices and archived in Trash.`);
         this.lastSynced.set(new Date());
         return true;
       }
       return false;
     } catch (err: any) {
-      console.error('Error clearing data:', err);
+      console.error('Error clearing all device data:', err);
       if (err.status === 401 || err.status === 403) {
         this.auth.logout(false);
       } else {
-        this.toast.error('Failed', err?.error?.error || 'Could not clear data array.');
+        this.toast.error('Failed', err?.error?.error || 'Could not clear all device data.');
       }
       return false;
     } finally {
       this.isLoading.set(false);
     }
+  }
+
+  /**
+   * Delete all items (defaults to current device's data)
+   */
+  async deleteAll(device?: string): Promise<boolean> {
+    if (device === 'ALL') {
+      return this.deleteAllDevicesData();
+    }
+    return this.deleteDeviceData(device || this.selectedDevice());
   }
 
   /**

@@ -233,9 +233,28 @@
   .filter-chips-container {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
   }
 
   .filter-chip.channel-all {
     grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 480px) {
+  .filter-panel {
+    padding: 10px 12px;
+  }
+
+  .filter-chip {
+    padding: 7px 10px;
+    font-size: 12px;
+    gap: 6px;
+    justify-content: space-between;
+  }
+
+  .chip-counter {
+    font-size: 10px;
+    padding: 1px 5px;
   }
 }
