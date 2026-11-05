@@ -1,7 +1,14 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MonitorService } from '@core/services/monitor.service';
-import { Device, AppUsageStat } from '@core/models/monitor-item.model';
+import { Device, AppUsageStat, DataUsage } from '@core/models/monitor-item.model';
+
+export interface DateOption {
+  key: string;
+  label: string;
+  isToday: boolean;
+  hasData: boolean;
+}
 
 @Component({
   selector: 'app-device-tabs',
@@ -12,6 +19,9 @@ import { Device, AppUsageStat } from '@core/models/monitor-item.model';
 export class DeviceTabsComponent {
   readonly monitorService = inject(MonitorService);
   showAppUsage = false;
+
+  readonly selectedHistoryDate = this.monitorService.selectedHistoryDate;
+  readonly isHistoryLoading = this.monitorService.isHistoryLoading;
 
   selectDevice(deviceId: string): void {
     this.monitorService.setDevice(deviceId);
@@ -29,6 +39,83 @@ export class DeviceTabsComponent {
   getTotalAllDevicesCount(): number {
     return this.monitorService.devices().reduce((sum, d) => sum + (d.totalCount || 0), 0);
   }
+
+  selectHistoryDate(dateKey: string): void {
+    this.monitorService.selectedHistoryDate.set(dateKey);
+  }
+
+  formatDateLabel(dateStr: string): string {
+    if (!dateStr || dateStr === 'TODAY') return 'Today';
+    const today = new Date().toISOString().slice(0, 10);
+    if (dateStr === today) return 'Today';
+
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    if (dateStr === yesterday) return 'Yesterday';
+
+    const [y, m, d] = dateStr.split('-').map(Number);
+    if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+      const dateObj = new Date(y, m - 1, d);
+      return dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+    return dateStr;
+  }
+
+  readonly availableDates = computed<DateOption[]>(() => {
+    const dates: DateOption[] = [];
+    dates.push({
+      key: 'TODAY',
+      label: 'Today',
+      isToday: true,
+      hasData: true
+    });
+
+    const history = this.monitorService.usageHistory();
+    const todayStr = new Date().toISOString().slice(0, 10);
+
+    for (const entry of history) {
+      if (entry.date && entry.date !== todayStr) {
+        dates.push({
+          key: entry.date,
+          label: this.formatDateLabel(entry.date),
+          isToday: false,
+          hasData: (entry.dataUsage?.totalBytes || 0) > 0 || (entry.appUsage?.length || 0) > 0
+        });
+      }
+    }
+
+    return dates;
+  });
+
+  readonly displayedDataUsage = computed<DataUsage | undefined>(() => {
+    const dateKey = this.selectedHistoryDate();
+    const currentDevice = this.getActiveDevice();
+    if (!currentDevice) return undefined;
+
+    if (dateKey === 'TODAY') {
+      return currentDevice.dataUsage;
+    }
+
+    const historyEntry = this.monitorService.usageHistory().find(h => h.date === dateKey);
+    return historyEntry?.dataUsage;
+  });
+
+  readonly displayedAppUsage = computed<AppUsageStat[]>(() => {
+    const dateKey = this.selectedHistoryDate();
+    const currentDevice = this.getActiveDevice();
+    if (!currentDevice) return [];
+
+    if (dateKey === 'TODAY') {
+      return currentDevice.appUsage || [];
+    }
+
+    const historyEntry = this.monitorService.usageHistory().find(h => h.date === dateKey);
+    return historyEntry?.appUsage || [];
+  });
+
+  readonly totalForegroundMs = computed<number>(() => {
+    const apps = this.displayedAppUsage();
+    return apps.reduce((sum, a) => sum + (a.foregroundTimeMs || 0), 0);
+  });
 
   toggleAppUsage(): void {
     this.showAppUsage = !this.showAppUsage;

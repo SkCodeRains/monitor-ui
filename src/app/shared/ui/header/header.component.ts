@@ -19,7 +19,7 @@ export class HeaderComponent {
   readonly exclusionService = inject(ExclusionService);
 
   onRefresh(): void {
-    this.monitorService.loadItems();
+    this.monitorService.refresh();
     this.exclusionService.loadExclusions(true);
   }
 }

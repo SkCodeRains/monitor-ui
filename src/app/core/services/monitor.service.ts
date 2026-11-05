@@ -2,7 +2,7 @@ import { Injectable, inject, signal, computed, effect } from '@angular/core';
 import { HttpClient, HttpContext } from '@angular/common/http';
 import { firstValueFrom, Subscription } from 'rxjs';
 import { environment } from '@env/environment';
-import { MonitorItem, ApiResponse, NotificationCategory, Device } from '@model';
+import { MonitorItem, ApiResponse, NotificationCategory, Device, DailyUsage } from '@model';
 import { ToastService } from './toast.service';
 import { TrashService } from './trash.service';
 import { AuthService } from './auth.service';
@@ -40,7 +40,12 @@ export class MonitorService {
   readonly devices = signal<Device[]>([
     { id: 'OTHER', deviceId: 'OTHER', name: 'Other / Vivo (Legacy)', totalCount: 0 }
   ]);
-  readonly selectedDevice = signal<string>('ALL');
+  readonly selectedDevice = signal<string>('OTHER');
+
+  // Daily Usage & App Screen Time History Signals
+  readonly usageHistory = signal<DailyUsage[]>([]);
+  readonly selectedHistoryDate = signal<string>('TODAY');
+  readonly isHistoryLoading = signal<boolean>(false);
 
   // Server-Side Pagination State Signals
   readonly pageSize = signal<number>(100);
@@ -69,7 +74,6 @@ export class MonitorService {
 
   readonly currentDeviceName = computed(() => {
     const curId = this.selectedDevice();
-    if (curId === 'ALL') return 'All Devices';
     const found = this.devices().find(d => d.id === curId || d.deviceId === curId);
     return found ? found.name : curId;
   });
@@ -121,14 +125,16 @@ export class MonitorService {
   }
 
   /**
-   * Select a specific device tab (e.g. 'OTHER', 'moto_g37', 'iqoo')
+   * Select a specific device tab (e.g. 'OTHER', 'moto_g37', 'iqoo', 'motorola_motog37power')
    */
   setDevice(deviceId: string): void {
     if (this.selectedDevice() !== deviceId) {
       this.selectedDevice.set(deviceId);
       this.selectedIds.set(new Set<string>());
       this.currentPage.set(1);
+      this.selectedHistoryDate.set('TODAY');
       this.loadItems();
+      this.loadUsageHistory(deviceId);
     }
   }
 
@@ -146,9 +152,62 @@ export class MonitorService {
 
       if (response && response.success && Array.isArray(response.devices)) {
         this.devices.set(response.devices);
+
+        // Smart device selection: Auto-switch away from 'OTHER' to an active real phone
+        if (this.selectedDevice() === 'OTHER') {
+          const realDevices = response.devices.filter(d => d.id !== 'OTHER' && d.deviceId !== 'OTHER');
+          if (realDevices.length > 0) {
+            // Find phone with dataUsage or highest count
+            const bestDev = realDevices.find(d => d.dataUsage && (d.dataUsage.totalBytes || 0) > 0)
+              || realDevices.reduce((max, d) => (d.totalCount || 0) > (max.totalCount || 0) ? d : max, realDevices[0]);
+
+            if (bestDev) {
+              const bestId = bestDev.id || bestDev.deviceId;
+              this.selectedDevice.set(bestId);
+              this.loadUsageHistory(bestId);
+              this.loadItems();
+              return;
+            }
+          }
+        }
+
+        // Ensure usage history is loaded for the currently selected device
+        this.loadUsageHistory(this.selectedDevice());
       }
     } catch (err: any) {
       console.warn('Could not fetch devices list:', err);
+    }
+  }
+
+  /**
+   * Fetch daily usage & app screen time history from GET /api/devices/:deviceId/usage-history
+   */
+  async loadUsageHistory(deviceId?: string, days = 7): Promise<void> {
+    const devId = deviceId || this.selectedDevice();
+    if (!devId || devId === 'ALL') {
+      this.usageHistory.set([]);
+      return;
+    }
+
+    this.isHistoryLoading.set(true);
+    try {
+      const context = new HttpContext().set(SKIP_LOADER, true);
+      const response = await firstValueFrom(
+        this.http.get<ApiResponse<DailyUsage[]>>(`${this.apiUrl}/devices/${devId}/usage-history?days=${days}`, { context })
+      );
+
+      if (response && response.success && Array.isArray(response.history)) {
+        this.usageHistory.set(response.history);
+      } else if (response && Array.isArray(response.data)) {
+        this.usageHistory.set(response.data);
+      } else {
+        this.usageHistory.set([]);
+      }
+    } catch (err: any) {
+      console.warn('Could not fetch usage history:', err);
+      this.usageHistory.set([]);
+    } finally {
+      this.isHistoryLoading.set(false);
     }
   }
 
@@ -161,21 +220,21 @@ export class MonitorService {
     const clamped = Math.max(1, Math.min(page, total));
     if (clamped !== this.currentPage()) {
       this.currentPage.set(clamped);
-      this.loadItems();
+      this.loadItems(false, false);
     }
   }
 
   nextPage(): void {
     if (this.currentPage() < this.totalPages()) {
       this.currentPage.update(p => p + 1);
-      this.loadItems();
+      this.loadItems(false, false);
     }
   }
 
   prevPage(): void {
     if (this.currentPage() > 1) {
       this.currentPage.update(p => p - 1);
-      this.loadItems();
+      this.loadItems(false, false);
     }
   }
 
@@ -244,10 +303,20 @@ export class MonitorService {
   }
 
   /**
+   * Complete refresh: reloads devices, usage history, and items with fresh counts
+   */
+  async refresh(silent = false): Promise<void> {
+    await this.loadDevices(silent);
+    await this.loadUsageHistory(this.selectedDevice());
+    await this.loadItems(silent, true);
+  }
+
+  /**
    * Fetch paginated items from GET /api/data?device=X&page=Y&limit=Z&category=W&search=S
    * Automatically cancels any previous in-flight request when user selects another tab or filter.
+   * counts: pass false on pagination to skip re-calculating counts and speed up query to sub-50ms.
    */
-  loadItems(silent = false): Promise<void> {
+  loadItems(silent = false, counts: boolean | null = null): Promise<void> {
     if (!this.auth.isAuthenticated()) {
       return Promise.resolve();
     }
@@ -268,14 +337,19 @@ export class MonitorService {
           this.loadItemsSub.unsubscribe();
           this.loadItemsSub = null;
         }
+        this.isLoading.set(false);
         resolve();
       };
 
-      const params: Record<string, string | number> = {
+      const params: Record<string, string | number | boolean> = {
         device: this.selectedDevice(),
         page: this.currentPage(),
         limit: this.pageSize()
       };
+
+      if (counts !== null) {
+        params['counts'] = counts;
+      }
 
       const category = this.selectedCategory();
       if (category && category !== 'ALL') {

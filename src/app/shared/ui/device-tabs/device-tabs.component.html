@@ -1,4 +1,5 @@
 <div class="device-tabs-panel glass-panel">
+  <!-- Monitored Phones Header -->
   <div class="device-header">
     <div class="header-left">
       <div class="device-icon-wrapper">
@@ -14,33 +15,8 @@
     </div>
   </div>
 
+  <!-- Device Selection Tabs -->
   <div class="device-tabs-container" role="tablist" aria-label="Device Tabs">
-    <!-- All Devices Unified Tab -->
-    <button
-      type="button"
-      role="tab"
-      id="device-tab-all"
-      [attr.aria-selected]="isDeviceActive('ALL')"
-      class="device-tab tab-all-devices"
-      [class.active]="isDeviceActive('ALL')"
-      (click)="selectDevice('ALL')"
-      title="View telemetry across all connected phones and sources"
-    >
-      <span class="tab-phone-icon">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-          <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-          <line x1="8" y1="21" x2="16" y2="21"></line>
-          <line x1="12" y1="17" x2="12" y2="21"></line>
-        </svg>
-      </span>
-
-      <span class="tab-label">All Devices</span>
-
-      <span class="tab-counter" [class.has-count]="getTotalAllDevicesCount() > 0">
-        {{ getTotalAllDevicesCount() }}
-      </span>
-    </button>
-
     @for (dev of monitorService.devices(); track (dev.id || dev.deviceId)) {
       @let devKey = dev.id || dev.deviceId || 'OTHER';
       <button
@@ -70,24 +46,8 @@
     }
   </div>
 
-  <!-- Live Daily Data Usage & Screen Time Bar for Currently Active Device -->
-  @if (isDeviceActive('ALL')) {
-    <div class="active-device-data-bar all-devices-info-bar">
-      <div class="data-bar-left">
-        <span class="data-icon-badge all">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-            <line x1="8" y1="21" x2="16" y2="21"></line>
-            <line x1="12" y1="17" x2="12" y2="21"></line>
-          </svg>
-        </span>
-        <span class="data-bar-label">All Devices Feed</span>
-        <span class="all-note">
-          Viewing unified live stream from all connected devices (Total: <strong>{{ getTotalAllDevicesCount() }}</strong> events). Click any device tab above to isolate its logs or view its mobile data usage & screen time.
-        </span>
-      </div>
-    </div>
-  } @else if (getActiveDevice(); as currentDevice) {
+  <!-- Telemetry Bar for Currently Active Device -->
+  @if (getActiveDevice(); as currentDevice) {
     @if (currentDevice.id === 'OTHER' || currentDevice.deviceId === 'OTHER') {
       <div class="active-device-data-bar legacy-info-bar">
         <div class="data-bar-left">
@@ -100,11 +60,49 @@
           </span>
           <span class="data-bar-label">Legacy Records Mode</span>
           <span class="legacy-note">
-            "Other (Vivo / Legacy)" is a virtual tab for unassigned historical records. Select a connected phone tab above (e.g. <strong>Motorola moto g37 power</strong>) to inspect live mobile data and daily app screen time.
+            "Other (Vivo / Legacy)" is a virtual tab for unassigned historical records. Select a connected phone tab above (e.g. <strong>Motorola moto g37 power</strong>) to inspect live mobile data, daily history, and screen time.
           </span>
         </div>
       </div>
     } @else {
+      <!-- Daily History Chips & 1-Hour Sync Indicator -->
+      <div class="history-chips-row">
+        <div class="history-chips-left">
+          <span class="history-icon-tag">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            <span class="history-label-text">Usage Log:</span>
+          </span>
+
+          <div class="history-chips-list">
+            @for (dt of availableDates(); track dt.key) {
+              <button
+                type="button"
+                class="history-chip"
+                [class.active]="selectedHistoryDate() === dt.key"
+                (click)="selectHistoryDate(dt.key)"
+                [title]="'View usage metrics for ' + dt.label"
+              >
+                <span class="chip-text">{{ dt.label }}</span>
+                @if (dt.isToday) {
+                  <span class="chip-live-badge">Live</span>
+                }
+              </button>
+            }
+          </div>
+        </div>
+
+        <div class="sync-frequency-badge" title="Data usage and app screen time sync automatically every 1 hour">
+          <span class="sync-pulse-dot"></span>
+          <span>Auto-sync: 1 hr</span>
+        </div>
+      </div>
+
+      <!-- Network Data Stats Bar -->
       <div class="active-device-data-bar">
         <div class="data-bar-left">
           <span class="data-icon-badge">
@@ -114,12 +112,18 @@
               <line x1="6" y1="20" x2="6" y2="14"></line>
             </svg>
           </span>
-          <span class="data-bar-label">Today's Data:</span>
+          <span class="data-bar-label">
+            @if (selectedHistoryDate() === 'TODAY') {
+              Today's Data:
+            } @else {
+              {{ formatDateLabel(selectedHistoryDate()) }} Data:
+            }
+          </span>
         </div>
 
         <div class="data-stat-pills">
           <!-- Mobile Data -->
-          <span class="data-pill mobile" title="Cellular Data used today">
+          <span class="data-pill mobile" title="Cellular Data used">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
               <path d="M2 20h20"></path>
               <path d="M5 20v-4"></path>
@@ -127,26 +131,26 @@
               <path d="M13 20V8"></path>
               <path d="M17 20V4"></path>
             </svg>
-            <span class="pill-val">{{ formatBytes(currentDevice.dataUsage?.mobileBytes) }}</span>
+            <span class="pill-val">{{ formatBytes(displayedDataUsage()?.mobileBytes) }}</span>
             <span class="pill-tag">Mobile</span>
           </span>
 
           <!-- Wi-Fi Data -->
-          <span class="data-pill wifi" title="Wi-Fi Data used today">
+          <span class="data-pill wifi" title="Wi-Fi Data used">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
               <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
               <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
               <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
               <circle cx="12" cy="20" r="1"></circle>
             </svg>
-            <span class="pill-val">{{ formatBytes(currentDevice.dataUsage?.wifiBytes) }}</span>
+            <span class="pill-val">{{ formatBytes(displayedDataUsage()?.wifiBytes) }}</span>
             <span class="pill-tag">Wi-Fi</span>
           </span>
 
           <!-- Total Data -->
-          <span class="data-pill total" title="Total Network Data (Mobile + Wi-Fi) today">
+          <span class="data-pill total" title="Total Network Data (Mobile + Wi-Fi)">
             <span class="pill-tag">Total:</span>
-            <span class="pill-val highlight">{{ formatBytes(currentDevice.dataUsage?.totalBytes) }}</span>
+            <span class="pill-val highlight">{{ formatBytes(displayedDataUsage()?.totalBytes) }}</span>
           </span>
 
           <!-- Toggle Screen Time Button -->
@@ -162,15 +166,19 @@
               <polyline points="12 6 12 12 16 14"></polyline>
             </svg>
             <span>Screen Time</span>
-            @if (currentDevice.appUsage && currentDevice.appUsage.length > 0) {
-              <span class="apps-count-badge">{{ currentDevice.appUsage.length }}</span>
+            @if (displayedAppUsage().length > 0) {
+              <span class="apps-count-badge">{{ displayedAppUsage().length }}</span>
             }
           </button>
 
-          <!-- Sync Time (Every 3 hours) -->
-          <span class="data-sync-time" title="Periodic sync every 3 hours">
+          <!-- Sync Time Indicator -->
+          <span class="data-sync-time" title="Periodic sync every 1 hour">
             <span class="sync-dot"></span>
-            {{ formatLastUpdated(currentDevice.dataUsage?.lastUpdated) }}
+            @if (selectedHistoryDate() === 'TODAY') {
+              {{ formatLastUpdated(displayedDataUsage()?.lastUpdated) }}
+            } @else {
+              {{ selectedHistoryDate() }}
+            }
           </span>
         </div>
       </div>
@@ -181,15 +189,27 @@
           <div class="usage-header">
             <div class="usage-title-group">
               <span class="usage-icon">📱</span>
-              <h4>Daily App Screen Time (Foreground & Background Service)</h4>
+              <h4>
+                App Screen Time
+                <span class="usage-date-sub">({{ formatDateLabel(selectedHistoryDate()) }})</span>
+              </h4>
             </div>
-            <span class="usage-device-tag">{{ currentDevice.name }}</span>
+
+            <div class="usage-header-meta">
+              @if (totalForegroundMs() > 0) {
+                <span class="total-screen-time-pill" title="Total screen-on duration for the day">
+                  <span class="time-label">Total:</span>
+                  <strong>{{ formatDuration(totalForegroundMs()) }}</strong>
+                </span>
+              }
+              <span class="usage-device-tag">{{ currentDevice.name }}</span>
+            </div>
           </div>
 
-          @if (currentDevice.appUsage && currentDevice.appUsage.length > 0) {
-            @let maxMs = getMaxForegroundMs(currentDevice.appUsage);
+          @if (displayedAppUsage().length > 0) {
+            @let maxMs = getMaxForegroundMs(displayedAppUsage());
             <div class="app-usage-list">
-              @for (app of currentDevice.appUsage; track app.packageName; let idx = $index) {
+              @for (app of displayedAppUsage(); track app.packageName; let idx = $index) {
                 <div class="app-usage-row">
                   <div class="app-rank">#{{ idx + 1 }}</div>
 
@@ -230,13 +250,13 @@
           } @else {
             <div class="empty-usage-state">
               <span class="empty-icon">⏳</span>
-              <p>No app screen time reported yet for {{ currentDevice.name }}.</p>
+              <p>No app screen time reported for {{ currentDevice.name }} on {{ formatDateLabel(selectedHistoryDate()) }}.</p>
               <span class="empty-hint">
                 To enable data & screen time telemetry, make sure <strong>Usage Access</strong> is enabled on the phone:
                 <br />
                 <strong>Android Settings &gt; Apps &gt; Special app access &gt; Usage access &gt; Allow for app</strong>.
                 <br />
-                Usage stats automatically sync to the server every 3 hours.
+                Usage stats automatically sync to the server every 1 hour.
               </span>
             </div>
           }

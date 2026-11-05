@@ -62,7 +62,7 @@ export class ToolbarComponent {
   }
 
   onRefresh(): void {
-    this.monitorService.loadItems();
+    this.monitorService.refresh();
   }
 
   onDeleteSelected(): void {

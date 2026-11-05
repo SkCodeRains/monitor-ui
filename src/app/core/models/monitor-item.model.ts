@@ -15,6 +15,15 @@ export interface DataUsage {
   lastUpdated?: string | Date | null;
 }
 
+export interface DailyUsage {
+  deviceId: string;
+  date: string; // YYYY-MM-DD
+  dataUsage?: DataUsage;
+  appUsage?: AppUsageStat[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface Device {
   id: string;
   deviceId: string;
@@ -123,6 +132,7 @@ export interface ApiResponse<T = any> {
   categoryCounts?: Record<NotificationCategory, number>;
   devices?: Device[];
   device?: string;
+  history?: DailyUsage[];
   error?: string;
   details?: string;
 }
