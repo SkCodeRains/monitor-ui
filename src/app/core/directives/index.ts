@@ -1,1 +1,1 @@
-// Core directives can be placed in this directory
+export * from './teleport-to-body.directive';

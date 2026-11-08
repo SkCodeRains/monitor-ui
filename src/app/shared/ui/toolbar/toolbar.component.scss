@@ -8,7 +8,8 @@
   flex-wrap: wrap;
 }
 
-.toolbar-left, .toolbar-right {
+.toolbar-left,
+.toolbar-right {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -47,16 +48,16 @@
     justify-content: center;
   }
 
-  &:hover input ~ .checkmark {
+  &:hover input~.checkmark {
     border-color: var(--accent-primary);
   }
 
-  input:checked ~ .checkmark {
+  input:checked~.checkmark {
     background-color: var(--accent-primary);
     border-color: var(--accent-primary);
   }
 
-  input:checked ~ .checkmark::after {
+  input:checked~.checkmark::after {
     content: "";
     width: 4px;
     height: 8px;
@@ -66,12 +67,12 @@
     margin-bottom: 2px;
   }
 
-  input:indeterminate ~ .checkmark {
+  input:indeterminate~.checkmark {
     background-color: var(--accent-primary);
     border-color: var(--accent-primary);
   }
 
-  input:indeterminate ~ .checkmark::after {
+  input:indeterminate~.checkmark::after {
     content: "";
     width: 8px;
     height: 2px;
@@ -86,6 +87,7 @@
   padding: 4px 10px;
   border-radius: var(--radius-full);
   border: 1px solid rgba(59, 130, 246, 0.3);
+
   .count {
     font-weight: 700;
     color: white;
@@ -209,10 +211,12 @@
     transform: scale(0.95);
     box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
   }
+
   70% {
     transform: scale(1);
     box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
   }
+
   100% {
     transform: scale(0.95);
     box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
@@ -224,7 +228,9 @@
 }
 
 @keyframes spin {
-  100% { transform: rotate(360deg); }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .btn-delete-selected {
@@ -251,29 +257,7 @@
   }
 }
 
-/* Modal Overlay */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
-  z-index: 999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-}
-
-.modal-card {
-  width: 100%;
-  max-width: 420px;
-  padding: 24px;
-  background: #111726;
-  border: 1px solid rgba(244, 63, 94, 0.3);
-  box-shadow: var(--shadow-lg), var(--shadow-danger-glow);
-  text-align: center;
-}
-
+/* Modal Content Elements */
 .modal-icon.danger {
   width: 48px;
   height: 48px;
@@ -360,6 +344,7 @@
 
 .btn-danger-all {
   background: #dc2626 !important;
+
   &:hover {
     background: #b91c1c !important;
     box-shadow: 0 4px 14px rgba(220, 38, 38, 0.5) !important;
@@ -390,6 +375,7 @@
 
   .search-box {
     width: 100%;
+
     .search-input {
       width: 100%;
       min-width: 0;

@@ -1,0 +1,14 @@
+<div 
+  class="modal-backdrop animate-fade-in" 
+  appTeleportToBody 
+  (click)="onBackdropClick()"
+>
+  <div 
+    class="modal-container glass-panel" 
+    [class.danger]="variant() === 'danger'"
+    [style.max-width]="maxWidth()" 
+    (click)="onCardClick($event)"
+  >
+    <ng-content />
+  </div>
+</div>

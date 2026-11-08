@@ -137,43 +137,45 @@
 
 <!-- Confirm Delete Modal (Device vs All Devices) -->
 @if (showConfirmModal()) {
-  <div class="modal-overlay animate-fade-in" (click)="showConfirmModal.set(false)">
-    <div class="modal-card glass-panel" (click)="$event.stopPropagation()">
-      <div class="modal-icon danger">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-          <line x1="12" y1="9" x2="12" y2="13"></line>
-          <line x1="12" y1="17" x2="12.01" y2="17"></line>
-        </svg>
-      </div>
-
-      @if (deleteMode() === 'device') {
-        <h3 class="modal-title">Delete {{ monitorService.currentDeviceName() }} Data?</h3>
-        <p class="modal-desc">
-          This will permanently remove all <strong>{{ monitorService.totalCount() }}</strong> item(s) for <strong>{{ monitorService.currentDeviceName() }}</strong> only.
-          <br><br>
-          <span class="device-pill-highlight">Device ID: {{ monitorService.selectedDevice() }}</span>
-          <br><br>
-          Records belonging to other phones will not be touched.
-        </p>
-        <div class="modal-buttons">
-          <button type="button" class="btn-modal btn-cancel" (click)="showConfirmModal.set(false)">Cancel</button>
-          <button type="button" class="btn-modal btn-danger" (click)="onDeleteConfirmed()">
-            Yes, Delete Device Data
-          </button>
-        </div>
-      } @else {
-        <h3 class="modal-title">Delete ALL Devices Data?</h3>
-        <p class="modal-desc">
-          <strong>WARNING:</strong> This will permanently delete <strong>EVERY telemetry record across ALL connected devices and phones</strong>.
-        </p>
-        <div class="modal-buttons">
-          <button type="button" class="btn-modal btn-cancel" (click)="showConfirmModal.set(false)">Cancel</button>
-          <button type="button" class="btn-modal btn-danger btn-danger-all" (click)="onDeleteConfirmed()">
-            Yes, Delete Everything
-          </button>
-        </div>
-      }
+  <app-modal 
+    variant="danger" 
+    maxWidth="440px" 
+    (closeModal)="showConfirmModal.set(false)"
+  >
+    <div class="modal-icon danger">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+        <line x1="12" y1="9" x2="12" y2="13"></line>
+        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+      </svg>
     </div>
-  </div>
+
+    @if (deleteMode() === 'device') {
+      <h3 class="modal-title">Delete {{ monitorService.currentDeviceName() }} Data?</h3>
+      <p class="modal-desc">
+        This will permanently remove all <strong>{{ monitorService.totalCount() }}</strong> item(s) for <strong>{{ monitorService.currentDeviceName() }}</strong> only.
+        <br><br>
+        <span class="device-pill-highlight">Device ID: {{ monitorService.selectedDevice() }}</span>
+        <br><br>
+        Records belonging to other phones will not be touched.
+      </p>
+      <div class="modal-buttons">
+        <button type="button" class="btn-modal btn-cancel" (click)="showConfirmModal.set(false)">Cancel</button>
+        <button type="button" class="btn-modal btn-danger" (click)="onDeleteConfirmed()">
+          Yes, Delete Device Data
+        </button>
+      </div>
+    } @else {
+      <h3 class="modal-title">Delete ALL Devices Data?</h3>
+      <p class="modal-desc">
+        <strong>WARNING:</strong> This will permanently delete <strong>EVERY telemetry record across ALL connected devices and phones</strong>.
+      </p>
+      <div class="modal-buttons">
+        <button type="button" class="btn-modal btn-cancel" (click)="showConfirmModal.set(false)">Cancel</button>
+        <button type="button" class="btn-modal btn-danger btn-danger-all" (click)="onDeleteConfirmed()">
+          Yes, Delete Everything
+        </button>
+      </div>
+    }
+  </app-modal>
 }

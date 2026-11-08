@@ -6,10 +6,11 @@ import { RouterLink } from '@angular/router';
 import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 import { MonitorService } from '@core/services/monitor.service';
+import { ModalComponent } from '@shared/ui/modal/modal.component';
 
 @Component({
   selector: 'app-toolbar',
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, ModalComponent],
   templateUrl: './toolbar.component.html',
   styleUrl: './toolbar.component.scss'
 })
