@@ -1,9 +1,41 @@
-import { Component, inject, OnInit, computed, effect } from '@angular/core';
+import { Component, inject, OnInit, computed, effect, signal } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DeviceTabsComponent } from '@shared/ui/device-tabs/device-tabs.component';
 import { MonitorService } from '@core/services/monitor.service';
 import { DeviceTimelineData, TimelineSessionRecord, AppSwapRecord } from '@model';
+
+export interface AppIntervalRecord {
+  startTime: number;
+  endTime: number;
+  durationSeconds: number;
+}
+
+export interface SessionAppGroup {
+  packageName: string;
+  appName: string;
+  totalDurationSeconds: number;
+  openCount: number;
+  firstStartTime: number;
+  lastEndTime: number;
+  intervals: AppIntervalRecord[];
+}
+
+export interface DailyAppTreeItem {
+  packageName: string;
+  appName: string;
+  totalDurationSeconds: number;
+  totalSessionsCount: number;
+  totalIntervalsCount: number;
+  percentageOfTotal: number;
+  intervals: {
+    sessionId: string;
+    sessionStartTime: number;
+    startTime: number;
+    endTime: number;
+    durationSeconds: number;
+  }[];
+}
 
 @Component({
   selector: 'app-usage-page',
@@ -21,6 +53,18 @@ export class UsageComponent implements OnInit {
 
   readonly isToday = computed(() => this.selectedDate() === this.todayStr);
 
+  /** View Mode: 'tree' (Tree / Grouped Apps) vs 'flow' (Linear step-by-step stream) */
+  readonly viewMode = signal<'tree' | 'flow'>('tree');
+
+  /** Whether the top-level Daily App Tree Breakdown card is expanded */
+  readonly showDailyBreakdown = signal<boolean>(true);
+
+  /** Set of expanded app tree keys for session intervals: "sessionId_packageName" */
+  readonly expandedSessionApps = signal<Set<string>>(new Set<string>());
+
+  /** Set of expanded daily app keys: "packageName" */
+  readonly expandedDailyApps = signal<Set<string>>(new Set<string>());
+
   readonly formattedDateLabel = computed(() => {
     const dStr = this.selectedDate();
     if (dStr === this.todayStr) return 'Today';
@@ -34,7 +78,7 @@ export class UsageComponent implements OnInit {
 
     const parts = dStr.split('-');
     if (parts.length === 3) {
-      const dt = new Date(parseInt(parts[0]), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      const dt = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
       return dt.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
     }
     return dStr;
@@ -100,32 +144,71 @@ export class UsageComponent implements OnInit {
   });
 
   readonly topApp = computed<{ name: string; durationFormatted: string } | null>(() => {
-    const sessions = this.timeline()?.sessions || [];
-    const appMap = new Map<string, number>();
-
-    for (const session of sessions) {
-      for (const swap of session.appSwaps) {
-        const appName = swap.appName || swap.packageName;
-        appMap.set(appName, (appMap.get(appName) || 0) + swap.durationSeconds);
-      }
-    }
-
-    if (appMap.size === 0) return null;
-
-    let topName = '';
-    let maxSec = 0;
-    for (const [name, sec] of appMap.entries()) {
-      if (sec > maxSec) {
-        maxSec = sec;
-        topName = name;
-      }
-    }
-
-    const hours = Math.floor(maxSec / 3600);
-    const mins = Math.floor((maxSec % 3600) / 60);
+    const daily = this.dailyAppTree();
+    if (!daily || daily.length === 0) return null;
+    const top = daily[0];
+    const hours = Math.floor(top.totalDurationSeconds / 3600);
+    const mins = Math.floor((top.totalDurationSeconds % 3600) / 60);
     const formatted = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+    return { name: top.appName, durationFormatted: formatted };
+  });
 
-    return { name: topName, durationFormatted: formatted };
+  /**
+   * Daily App Usage Tree: Groups all sessions and intervals by application.
+   * Shows total daily usage, percentage bar, and expandable session intervals.
+   */
+  readonly dailyAppTree = computed<DailyAppTreeItem[]>(() => {
+    const data = this.timeline();
+    if (!data || !data.sessions) return [];
+
+    const totalDaySec = data.totalScreenTimeSeconds || 1;
+    const appMap = new Map<string, DailyAppTreeItem>();
+
+    for (const session of data.sessions) {
+      for (const swap of session.appSwaps || []) {
+        const pkg = (swap.packageName || '').toLowerCase();
+        const isTransient = (pkg.includes('launcher') || pkg.includes('permissioncontroller') || pkg.includes('systemui')) && swap.durationSeconds < 3;
+        if (isTransient) continue;
+
+        const key = swap.packageName || swap.appName;
+        let item = appMap.get(key);
+        if (!item) {
+          item = {
+            packageName: swap.packageName,
+            appName: swap.appName || swap.packageName,
+            totalDurationSeconds: 0,
+            totalSessionsCount: 0,
+            totalIntervalsCount: 0,
+            percentageOfTotal: 0,
+            intervals: []
+          };
+          appMap.set(key, item);
+        }
+
+        item.totalDurationSeconds += swap.durationSeconds;
+        item.totalIntervalsCount += 1;
+        item.intervals.push({
+          sessionId: session.sessionId,
+          sessionStartTime: session.startTime,
+          startTime: swap.startTime,
+          endTime: swap.endTime,
+          durationSeconds: swap.durationSeconds
+        });
+      }
+    }
+
+    const items = Array.from(appMap.values());
+    for (const item of items) {
+      // Count unique sessions this app appeared in
+      const sessionIds = new Set(item.intervals.map(i => i.sessionId));
+      item.totalSessionsCount = sessionIds.size;
+      item.percentageOfTotal = Math.min(100, Math.round((item.totalDurationSeconds / totalDaySec) * 100));
+      // Sort intervals newest first
+      item.intervals.sort((a, b) => b.startTime - a.startTime);
+    }
+
+    // Sort by total duration descending
+    return items.sort((a, b) => b.totalDurationSeconds - a.totalDurationSeconds);
   });
 
   constructor() {
@@ -139,6 +222,107 @@ export class UsageComponent implements OnInit {
 
   ngOnInit(): void {
     this.monitorService.loadTimelineSessions();
+  }
+
+  /**
+   * Helper to group a single session's app swaps by application (Tree Structure).
+   */
+  getSessionAppGroups(session: TimelineSessionRecord): SessionAppGroup[] {
+    const validSwaps = (session.appSwaps || []).filter(swap => {
+      const pkg = (swap.packageName || '').toLowerCase();
+      const isTransient = (pkg.includes('launcher') || pkg.includes('permissioncontroller') || pkg.includes('systemui')) && swap.durationSeconds < 3;
+      return !isTransient;
+    });
+
+    const groupMap = new Map<string, SessionAppGroup>();
+
+    for (const swap of validSwaps) {
+      const key = swap.packageName || swap.appName;
+      let grp = groupMap.get(key);
+      if (!grp) {
+        grp = {
+          packageName: swap.packageName,
+          appName: swap.appName || swap.packageName,
+          totalDurationSeconds: 0,
+          openCount: 0,
+          firstStartTime: swap.startTime,
+          lastEndTime: swap.endTime,
+          intervals: []
+        };
+        groupMap.set(key, grp);
+      }
+
+      grp.totalDurationSeconds += swap.durationSeconds;
+      grp.openCount += 1;
+      grp.lastEndTime = Math.max(grp.lastEndTime, swap.endTime);
+      grp.intervals.push({
+        startTime: swap.startTime,
+        endTime: swap.endTime,
+        durationSeconds: swap.durationSeconds
+      });
+    }
+
+    // Sort intervals inside each app newest first
+    for (const grp of groupMap.values()) {
+      grp.intervals.sort((a, b) => b.startTime - a.startTime);
+    }
+
+    // Sort apps in this session by duration descending
+    return Array.from(groupMap.values()).sort((a, b) => b.totalDurationSeconds - a.totalDurationSeconds);
+  }
+
+  toggleSessionApp(sessionId: string, pkg: string): void {
+    const key = `${sessionId}_${pkg}`;
+    const next = new Set(this.expandedSessionApps());
+    if (next.has(key)) {
+      next.delete(key);
+    } else {
+      next.add(key);
+    }
+    this.expandedSessionApps.set(next);
+  }
+
+  isSessionAppExpanded(sessionId: string, pkg: string): boolean {
+    return this.expandedSessionApps().has(`${sessionId}_${pkg}`);
+  }
+
+  toggleDailyApp(pkg: string): void {
+    const next = new Set(this.expandedDailyApps());
+    if (next.has(pkg)) {
+      next.delete(pkg);
+    } else {
+      next.add(pkg);
+    }
+    this.expandedDailyApps.set(next);
+  }
+
+  isDailyAppExpanded(pkg: string): boolean {
+    return this.expandedDailyApps().has(pkg);
+  }
+
+  expandAll(): void {
+    const allSessionKeys = new Set<string>();
+    for (const session of this.timeline()?.sessions || []) {
+      for (const grp of this.getSessionAppGroups(session)) {
+        allSessionKeys.add(`${session.sessionId}_${grp.packageName}`);
+      }
+    }
+    this.expandedSessionApps.set(allSessionKeys);
+
+    const allDailyKeys = new Set<string>();
+    for (const item of this.dailyAppTree()) {
+      allDailyKeys.add(item.packageName);
+    }
+    this.expandedDailyApps.set(allDailyKeys);
+  }
+
+  collapseAll(): void {
+    this.expandedSessionApps.set(new Set<string>());
+    this.expandedDailyApps.set(new Set<string>());
+  }
+
+  toggleViewMode(mode: 'tree' | 'flow'): void {
+    this.viewMode.set(mode);
   }
 
   formatDuration(seconds: number): string {
@@ -160,6 +344,9 @@ export class UsageComponent implements OnInit {
     if (combined.includes('msg') || combined.includes('messaging')) return '✉️';
     if (combined.includes('music') || combined.includes('spotify')) return '🎵';
     if (combined.includes('gallery') || combined.includes('photo')) return '🖼️';
+    if (combined.includes('settings')) return '⚙️';
+    if (combined.includes('camera')) return '📷';
+    if (combined.includes('map')) return '🗺️';
     return '📱';
   }
 }

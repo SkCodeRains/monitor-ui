@@ -90,21 +90,124 @@
     </div>
   </div>
 
-  <!-- Timeline Header / Action Bar -->
+  <!-- Daily App Usage Tree Summary Card -->
+  @if (dailyAppTree().length > 0) {
+    <div class="daily-app-card glass-panel">
+      <div class="daily-app-header" (click)="showDailyBreakdown.set(!showDailyBreakdown())">
+        <div class="title-with-pill">
+          <span class="section-icon">🌳</span>
+          <h4>Daily App Usage Breakdown (Tree)</h4>
+          <span class="count-pill">{{ dailyAppTree().length }} apps used</span>
+        </div>
+        <button class="btn-toggle-card" type="button">
+          <span>{{ showDailyBreakdown() ? 'Collapse' : 'Expand' }}</span>
+          <svg [class.rotated]="showDailyBreakdown()" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+      </div>
+
+      @if (showDailyBreakdown()) {
+        <div class="daily-app-tree-list">
+          @for (item of dailyAppTree(); track item.packageName) {
+            <div class="daily-tree-node" [class.is-expanded]="isDailyAppExpanded(item.packageName)">
+              <div class="tree-node-row" (click)="toggleDailyApp(item.packageName)">
+                <div class="node-main-info">
+                  <span class="app-emoji">{{ getAppIcon(item.appName, item.packageName) }}</span>
+                  <div class="app-meta">
+                    <div class="app-names">
+                      <strong class="app-title">{{ item.appName }}</strong>
+                      <span class="app-pkg-sub">{{ item.packageName }}</span>
+                    </div>
+                    <!-- Usage % Progress Bar -->
+                    <div class="usage-bar-track">
+                      <div class="usage-bar-fill" [style.width.%]="item.percentageOfTotal"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="node-stats">
+                  <div class="stats-badges">
+                    <span class="badge-duration">{{ formatDuration(item.totalDurationSeconds) }}</span>
+                    <span class="badge-opens">{{ item.totalIntervalsCount }} open{{ item.totalIntervalsCount === 1 ? '' : 's' }} ({{ item.totalSessionsCount }} session{{ item.totalSessionsCount === 1 ? '' : 's' }})</span>
+                  </div>
+                  <button class="btn-arrow" type="button" [attr.aria-expanded]="isDailyAppExpanded(item.packageName)">
+                    <svg [class.arrow-up]="isDailyAppExpanded(item.packageName)" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Nested Sub-Tree: All Intervals for this App -->
+              @if (isDailyAppExpanded(item.packageName)) {
+                <div class="tree-intervals-branch animate-fade-in">
+                  <div class="branch-label">Detailed usage intervals across today's sessions:</div>
+                  <div class="intervals-grid">
+                    @for (interval of item.intervals; track interval.startTime) {
+                      <div class="interval-chip">
+                        <span class="chip-dot"></span>
+                        <span class="chip-time">{{ interval.startTime | date:'shortTime' }} ➔ {{ interval.endTime | date:'shortTime' }}</span>
+                        <span class="chip-duration">{{ formatDuration(interval.durationSeconds) }}</span>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Timeline Header / Action Bar with View Mode Switcher -->
   <div class="timeline-toolbar glass-panel">
     <div class="toolbar-title">
       <h3>Device Session & App Swap Timeline</h3>
       <span class="subtitle">Chronological record of unlocks, app swapping flow, and screen locks</span>
     </div>
 
-    <button class="btn-refresh" (click)="monitorService.loadTimelineSessions()" [disabled]="monitorService.isTimelineLoading()">
-      <svg [class.spinning]="monitorService.isTimelineLoading()" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <polyline points="23 4 23 10 17 10"></polyline>
-        <polyline points="1 20 1 14 7 14"></polyline>
-        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-      </svg>
-      <span>Refresh Timeline</span>
-    </button>
+    <div class="toolbar-actions">
+      <!-- Tree vs Flow View Switcher -->
+      <div class="view-mode-toggle">
+        <button 
+          class="mode-btn" 
+          [class.active]="viewMode() === 'tree'"
+          (click)="toggleViewMode('tree')"
+          title="Tree View: Group repeated apps with collapsible intervals">
+          <span class="mode-icon">🌳</span>
+          <span>Tree View</span>
+        </button>
+        <button 
+          class="mode-btn" 
+          [class.active]="viewMode() === 'flow'"
+          (click)="toggleViewMode('flow')"
+          title="Flow View: Chronological step-by-step stream">
+          <span class="mode-icon">⏱️</span>
+          <span>Step Flow</span>
+        </button>
+      </div>
+
+      <!-- Quick Expand / Collapse All -->
+      <div class="tree-tools" *ngIf="viewMode() === 'tree'">
+        <button class="btn-tool" (click)="expandAll()" title="Expand All Tree Intervals">
+          <span>⊞ Expand All</span>
+        </button>
+        <button class="btn-tool" (click)="collapseAll()" title="Collapse All Tree Intervals">
+          <span>⊟ Collapse All</span>
+        </button>
+      </div>
+
+      <button class="btn-refresh" (click)="monitorService.loadTimelineSessions()" [disabled]="monitorService.isTimelineLoading()">
+        <svg [class.spinning]="monitorService.isTimelineLoading()" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <polyline points="1 20 1 14 7 14"></polyline>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+        <span>Refresh</span>
+      </button>
+    </div>
   </div>
 
   <!-- Loading State -->
@@ -155,7 +258,7 @@
           </div>
         </div>
 
-        <!-- Inside Session: App Swap Sequence Flow -->
+        <!-- Inside Session: Content based on View Mode -->
         <div class="app-swaps-flow">
           <!-- Flow Step 1: Device Unlocked -->
           <div class="flow-step step-system">
@@ -166,25 +269,87 @@
             </div>
           </div>
 
-          <!-- Flow Steps: Apps Opened and Swapped -->
-          @for (swap of session.appSwaps; track swap.startTime) {
-            <div class="flow-step step-app">
-              <div class="step-line"></div>
-              <div class="step-dot dot-app"></div>
-              <div class="step-content">
-                <div class="app-header-row">
-                  <div class="app-name-wrap">
-                    <span class="app-emoji">{{ getAppIcon(swap.appName, swap.packageName) }}</span>
-                    <strong class="app-name">{{ swap.appName }}</strong>
-                    <span class="app-pkg">{{ swap.packageName }}</span>
+          <!-- MODE A: Tree / Grouped View (Default) -->
+          @if (viewMode() === 'tree') {
+            @for (grp of getSessionAppGroups(session); track grp.packageName) {
+              <div class="flow-step step-app step-tree-node">
+                <div class="step-line"></div>
+                <div class="step-dot dot-app"></div>
+                <div class="step-content tree-node-box" [class.has-multiple]="grp.openCount > 1">
+                  <!-- App Group Header Row -->
+                  <div class="app-header-row clickable" (click)="toggleSessionApp(session.sessionId, grp.packageName)">
+                    <div class="app-name-wrap">
+                      <span class="app-emoji">{{ getAppIcon(grp.appName, grp.packageName) }}</span>
+                      <strong class="app-name">{{ grp.appName }}</strong>
+                      <span class="app-pkg">{{ grp.packageName }}</span>
+                    </div>
+
+                    <div class="app-badges-group">
+                      <span class="app-duration-badge">{{ formatDuration(grp.totalDurationSeconds) }} total</span>
+                      <span class="app-count-badge" [class.multiple]="grp.openCount > 1">
+                        {{ grp.openCount }} open{{ grp.openCount === 1 ? '' : 's' }}
+                      </span>
+                      <button 
+                        *ngIf="grp.openCount > 1" 
+                        class="btn-expand-tree" 
+                        type="button" 
+                        title="Toggle intervals">
+                        <svg [class.arrow-up]="isSessionAppExpanded(session.sessionId, grp.packageName)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                          <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                      </button>
+                    </div>
                   </div>
-                  <span class="app-duration-badge">{{ formatDuration(swap.durationSeconds) }}</span>
-                </div>
-                <div class="app-time-row">
-                  <span>{{ swap.startTime | date:'h:mm:ss a' }} ➔ {{ swap.endTime | date:'h:mm:ss a' }}</span>
+
+                  <!-- Single Interval Directly Displayed if only opened once and not expanded -->
+                  @if (grp.openCount === 1 && !isSessionAppExpanded(session.sessionId, grp.packageName)) {
+                    <div class="app-time-row single-interval">
+                      <span>{{ grp.intervals[0].startTime | date:'h:mm:ss a' }} ➔ {{ grp.intervals[0].endTime | date:'h:mm:ss a' }}</span>
+                    </div>
+                  }
+
+                  <!-- Nested Tree Branch: Displayed when expanded or when user toggles -->
+                  @if (isSessionAppExpanded(session.sessionId, grp.packageName) || grp.openCount > 1) {
+                    <div class="session-tree-intervals" *ngIf="isSessionAppExpanded(session.sessionId, grp.packageName)">
+                      <div class="intervals-tree-line">
+                        @for (interval of grp.intervals; track interval.startTime; let idx = $index; let last = $last) {
+                          <div class="tree-interval-row">
+                            <span class="tree-branch-symbol">{{ last ? '└──' : '├──' }}</span>
+                            <span class="interval-time">
+                              {{ interval.startTime | date:'h:mm:ss a' }} ➔ {{ interval.endTime | date:'h:mm:ss a' }}
+                            </span>
+                            <span class="interval-dur-chip">{{ formatDuration(interval.durationSeconds) }}</span>
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  }
                 </div>
               </div>
-            </div>
+            }
+          }
+
+          <!-- MODE B: Flow / Chronological Stream View -->
+          @if (viewMode() === 'flow') {
+            @for (swap of session.appSwaps; track swap.startTime) {
+              <div class="flow-step step-app">
+                <div class="step-line"></div>
+                <div class="step-dot dot-app"></div>
+                <div class="step-content">
+                  <div class="app-header-row">
+                    <div class="app-name-wrap">
+                      <span class="app-emoji">{{ getAppIcon(swap.appName, swap.packageName) }}</span>
+                      <strong class="app-name">{{ swap.appName }}</strong>
+                      <span class="app-pkg">{{ swap.packageName }}</span>
+                    </div>
+                    <span class="app-duration-badge">{{ formatDuration(swap.durationSeconds) }}</span>
+                  </div>
+                  <div class="app-time-row">
+                    <span>{{ swap.startTime | date:'h:mm:ss a' }} ➔ {{ swap.endTime | date:'h:mm:ss a' }}</span>
+                  </div>
+                </div>
+              </div>
+            }
           }
 
           <!-- Flow Step Final: Device Locked -->
