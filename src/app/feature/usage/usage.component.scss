@@ -1,0 +1,369 @@
+.usage-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding-bottom: 3rem;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+
+  .kpi-card {
+    padding: 1.15rem 1.25rem;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+
+    .kpi-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.35rem;
+
+      &.icon-time { background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.3); }
+      &.icon-unlock { background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); }
+      &.icon-star { background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); }
+      &.icon-bolt { background: rgba(236, 72, 153, 0.15); border: 1px solid rgba(236, 72, 153, 0.3); }
+    }
+
+    .kpi-info {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+
+      .kpi-label {
+        font-size: 0.78rem;
+        color: rgba(255, 255, 255, 0.5);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+
+      .kpi-value {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #fff;
+
+        small {
+          font-size: 0.8rem;
+          color: rgba(255, 255, 255, 0.6);
+          font-weight: normal;
+        }
+      }
+    }
+  }
+}
+
+.timeline-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border-radius: 12px;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+
+  .toolbar-title {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+
+    h3 {
+      margin: 0;
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .subtitle {
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.5);
+    }
+  }
+
+  .btn-refresh {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #6366f1;
+    color: #fff;
+    border: none;
+    padding: 0.55rem 1rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.5;
+    }
+
+    .spinning {
+      animation: spin 1s linear infinite;
+    }
+  }
+}
+
+.sessions-stream {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.session-card {
+  padding: 1.25rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+
+  &.is-live {
+    border-color: rgba(16, 185, 129, 0.4);
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.1);
+  }
+
+  .session-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    padding-bottom: 0.85rem;
+
+    .session-title-group {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+
+      .unlock-icon {
+        font-size: 1.35rem;
+      }
+
+      .session-times {
+        display: flex;
+        flex-direction: column;
+
+        .session-span {
+          font-size: 1rem;
+          font-weight: 600;
+          color: #fff;
+
+          .arrow {
+            color: rgba(255, 255, 255, 0.4);
+            margin: 0 0.25rem;
+          }
+        }
+
+        .session-date {
+          font-size: 0.75rem;
+          color: rgba(255, 255, 255, 0.45);
+        }
+      }
+    }
+
+    .session-status-badge {
+      .duration-pill {
+        background: rgba(99, 102, 241, 0.15);
+        color: #818cf8;
+        border: 1px solid rgba(99, 102, 241, 0.3);
+        padding: 0.35rem 0.8rem;
+        border-radius: 999px;
+        font-size: 0.82rem;
+        font-weight: 600;
+      }
+
+      .live-pill {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        background: rgba(16, 185, 129, 0.15);
+        color: #34d399;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        padding: 0.35rem 0.8rem;
+        border-radius: 999px;
+        font-size: 0.82rem;
+        font-weight: 600;
+
+        .pulse-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: #10b981;
+          animation: pulse 1.5s infinite;
+        }
+      }
+    }
+  }
+
+  .app-swaps-flow {
+    display: flex;
+    flex-direction: column;
+    padding-left: 0.5rem;
+
+    .flow-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      position: relative;
+      padding-bottom: 0.95rem;
+
+      &:last-child {
+        padding-bottom: 0;
+      }
+
+      &.step-system {
+        .step-dot {
+          width: 12px;
+          height: 12px;
+          border-radius: 50%;
+          margin-top: 4px;
+
+          &.dot-unlock {
+            background: #10b981;
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+          }
+
+          &.dot-lock {
+            background: #ef4444;
+            box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+          }
+        }
+
+        .step-content {
+          display: flex;
+          align-items: baseline;
+          gap: 0.6rem;
+
+          .step-time {
+            font-size: 0.75rem;
+            font-family: monospace;
+            color: rgba(255, 255, 255, 0.45);
+          }
+
+          .step-label {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.8);
+          }
+        }
+      }
+
+      &.step-app {
+        .step-dot {
+          width: 10px;
+          height: 10px;
+          border-radius: 50%;
+          background: #6366f1;
+          margin-top: 6px;
+          z-index: 2;
+        }
+
+        .step-line {
+          position: absolute;
+          left: 4px;
+          top: -12px;
+          bottom: 0;
+          width: 2px;
+          background: rgba(255, 255, 255, 0.1);
+          z-index: 1;
+        }
+
+        .step-content {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.05);
+          padding: 0.65rem 0.85rem;
+          border-radius: 8px;
+
+          .app-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+
+            .app-name-wrap {
+              display: flex;
+              align-items: center;
+              gap: 0.45rem;
+
+              .app-emoji {
+                font-size: 1rem;
+              }
+
+              .app-name {
+                font-size: 0.92rem;
+                color: #fff;
+              }
+
+              .app-pkg {
+                font-size: 0.72rem;
+                font-family: monospace;
+                color: rgba(255, 255, 255, 0.35);
+              }
+            }
+
+            .app-duration-badge {
+              font-size: 0.8rem;
+              font-family: monospace;
+              background: rgba(99, 102, 241, 0.2);
+              color: #a5b4fc;
+              padding: 0.15rem 0.5rem;
+              border-radius: 4px;
+            }
+          }
+
+          .app-time-row {
+            font-size: 0.72rem;
+            color: rgba(255, 255, 255, 0.4);
+            font-family: monospace;
+          }
+        }
+      }
+    }
+  }
+}
+
+.loading-state, .empty-state {
+  padding: 3.5rem 1.5rem;
+  text-align: center;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+
+  .empty-icon {
+    font-size: 2.8rem;
+  }
+
+  h3 {
+    margin: 0;
+    color: #f1f5f9;
+  }
+
+  p {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.9rem;
+    max-width: 440px;
+  }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0% { transform: scale(0.95); opacity: 0.7; }
+  50% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0.7; }
+}

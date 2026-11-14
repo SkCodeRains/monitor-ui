@@ -114,6 +114,73 @@ export interface MonitorItem {
   [key: string]: any;
 }
 
+export interface CallRecord {
+  id: string;
+  callerName: string;
+  phoneNumber: string;
+  direction: 'INCOMING' | 'OUTGOING' | 'MISSED' | 'REJECTED' | 'UNKNOWN';
+  durationText: string;
+  timestamp: number;
+  createdAt?: string;
+}
+
+export interface GroupedCallContact {
+  key: string;
+  phoneNumber: string;
+  contactName: string;
+  totalCalls: number;
+  incomingCount: number;
+  outgoingCount: number;
+  missedCount: number;
+  lastCallTime: number;
+  calls: CallRecord[];
+}
+
+export interface SmsMessage {
+  id: string;
+  address: string;
+  contactName: string;
+  body: string;
+  direction: 'INCOMING' | 'OUTGOING';
+  timestamp: number;
+  createdAt?: string;
+}
+
+export interface MessageThread {
+  threadId: string;
+  address: string;
+  contactName: string;
+  lastMessage: string;
+  lastMessageTime: number;
+  totalMessages: number;
+  messages: SmsMessage[];
+}
+
+export interface AppSwapRecord {
+  packageName: string;
+  appName: string;
+  startTime: number;
+  endTime: number;
+  durationSeconds: number;
+}
+
+export interface TimelineSessionRecord {
+  sessionId: string;
+  startTime: number;
+  endTime: number;
+  durationSeconds: number;
+  isOngoing?: boolean;
+  appSwaps: AppSwapRecord[];
+}
+
+export interface DeviceTimelineData {
+  deviceId: string;
+  date: string;
+  totalScreenTimeSeconds: number;
+  totalUnlocks: number;
+  sessions: TimelineSessionRecord[];
+}
+
 export interface ApiResponse<T = any> {
   success: boolean;
   message?: string;

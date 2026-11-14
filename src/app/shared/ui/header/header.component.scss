@@ -97,6 +97,21 @@
     background: rgba(244, 63, 94, 0.3);
     color: #fecdd3;
   }
+
+  &.calls-badge {
+    background: rgba(16, 185, 129, 0.3);
+    color: #a7f3d0;
+  }
+
+  &.sms-badge {
+    background: rgba(59, 130, 246, 0.3);
+    color: #bfdbfe;
+  }
+
+  &.notif-badge {
+    background: rgba(245, 158, 11, 0.3);
+    color: #fde68a;
+  }
 }
 
 .header-stats {

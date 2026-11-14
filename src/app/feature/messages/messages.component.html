@@ -1,0 +1,128 @@
+<div class="messages-page animate-fade-in">
+  <!-- Multi-Device Monitored Phones Tabs -->
+  <app-device-tabs />
+
+  <!-- Messages Container (Master-Detail Two-Column Layout) -->
+  <div class="messages-container glass-panel">
+    <!-- Left Sidebar: Conversations List -->
+    <div class="threads-sidebar">
+      <div class="sidebar-header">
+        <div class="search-box">
+          <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input 
+            type="text" 
+            placeholder="Search conversations..." 
+            [ngModel]="monitorService.messagesSearchTerm()"
+            (ngModelChange)="onSearchChange($event)"
+            class="search-input"
+          />
+        </div>
+
+        <button class="btn-icon-refresh" (click)="monitorService.loadGroupedMessages()" title="Refresh messages">
+          <svg [class.spinning]="monitorService.isMessagesLoading()" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <polyline points="1 20 1 14 7 14"></polyline>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Threads Scroll List -->
+      <div class="threads-list">
+        @if (monitorService.isMessagesLoading() && monitorService.messageThreads().length === 0) {
+          <div class="sidebar-loading">
+            <div class="spinner"></div>
+            <span>Loading SMS threads...</span>
+          </div>
+        }
+
+        @if (!monitorService.isMessagesLoading() && monitorService.messageThreads().length === 0) {
+          <div class="sidebar-empty">
+            <span>No SMS conversations found for {{ monitorService.currentDeviceName() }}</span>
+          </div>
+        }
+
+        @for (thread of monitorService.messageThreads(); track thread.threadId) {
+          <div 
+            class="thread-item" 
+            [class.active]="activeThread()?.threadId === thread.threadId"
+            (click)="selectThread(thread.threadId)"
+          >
+            <div class="thread-avatar">
+              {{ getInitials(thread.contactName) }}
+            </div>
+            <div class="thread-meta">
+              <div class="meta-top">
+                <span class="thread-name">{{ thread.contactName }}</span>
+                <span class="thread-time">{{ thread.lastMessageTime | date:'shortTime' }}</span>
+              </div>
+              <div class="meta-bottom">
+                <span class="thread-snippet">{{ thread.lastMessage }}</span>
+                <span class="thread-count">{{ thread.totalMessages }}</span>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Right Pane: Active Thread Chat View -->
+    <div class="chat-pane">
+      @if (activeThread(); as thread) {
+        <!-- Chat Header -->
+        <div class="chat-header">
+          <div class="chat-contact-info">
+            <div class="contact-avatar">
+              {{ getInitials(thread.contactName) }}
+            </div>
+            <div>
+              <h3 class="contact-name">{{ thread.contactName }}</h3>
+              <span class="contact-phone">{{ thread.address }}</span>
+            </div>
+          </div>
+          <div class="chat-meta-badge">
+            <span>{{ thread.messages.length }} messages</span>
+          </div>
+        </div>
+
+        <!-- Chat History Scroll Area -->
+        <div class="chat-messages-area">
+          <div class="messages-stream">
+            @for (msg of thread.messages; track msg.id) {
+              <div 
+                class="message-bubble-row" 
+                [class.row-outgoing]="msg.direction === 'OUTGOING'"
+                [class.row-incoming]="msg.direction === 'INCOMING'"
+              >
+                <div class="message-bubble">
+                  <div class="bubble-sender" *ngIf="msg.direction === 'INCOMING'">
+                    {{ thread.contactName }}
+                  </div>
+                  <div class="bubble-text">
+                    {{ msg.body }}
+                  </div>
+                  <div class="bubble-time">
+                    {{ msg.timestamp | date:'mediumDate' }} • {{ msg.timestamp | date:'shortTime' }}
+                    @if (msg.direction === 'OUTGOING') {
+                      <span class="status-tick">✓</span>
+                    }
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      } @else {
+        <!-- Empty Chat Pane -->
+        <div class="no-chat-selected">
+          <div class="empty-icon">💬</div>
+          <h3>Select a Conversation</h3>
+          <p>Choose an SMS thread from the left sidebar to view the full chat history.</p>
+        </div>
+      }
+    </div>
+  </div>
+</div>

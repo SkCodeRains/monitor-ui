@@ -2,7 +2,7 @@ import { Injectable, inject, signal, computed, effect } from '@angular/core';
 import { HttpClient, HttpContext } from '@angular/common/http';
 import { firstValueFrom, Subscription } from 'rxjs';
 import { environment } from '@env/environment';
-import { MonitorItem, ApiResponse, NotificationCategory, Device, DailyUsage } from '@model';
+import { MonitorItem, ApiResponse, NotificationCategory, Device, DailyUsage, GroupedCallContact, MessageThread, DeviceTimelineData } from '@model';
 import { ToastService } from './toast.service';
 import { TrashService } from './trash.service';
 import { AuthService } from './auth.service';
@@ -46,6 +46,19 @@ export class MonitorService {
   readonly usageHistory = signal<DailyUsage[]>([]);
   readonly selectedHistoryDate = signal<string>('TODAY');
   readonly isHistoryLoading = signal<boolean>(false);
+
+  // Dedicated Panels State Signals
+  readonly groupedCalls = signal<GroupedCallContact[]>([]);
+  readonly isCallsLoading = signal<boolean>(false);
+  readonly callsSearchTerm = signal<string>('');
+
+  readonly messageThreads = signal<MessageThread[]>([]);
+  readonly isMessagesLoading = signal<boolean>(false);
+  readonly messagesSearchTerm = signal<string>('');
+  readonly selectedThreadId = signal<string | null>(null);
+
+  readonly timelineData = signal<DeviceTimelineData | null>(null);
+  readonly isTimelineLoading = signal<boolean>(false);
 
   // Server-Side Pagination State Signals
   readonly pageSize = signal<number>(100);
@@ -689,5 +702,91 @@ export class MonitorService {
 
   clearSelection(): void {
     this.selectedIds.set(new Set());
+  }
+
+  /**
+   * Loads grouped call logs by contact / phone number
+   */
+  async loadGroupedCalls(silent = false): Promise<void> {
+    this.isCallsLoading.set(true);
+    try {
+      const device = this.selectedDevice();
+      const search = this.callsSearchTerm().trim();
+      const params: any = { device };
+      if (search) params.search = search;
+
+      const context = new HttpContext().set(SKIP_LOADER, true);
+      const res = await firstValueFrom(
+        this.http.get<ApiResponse<GroupedCallContact[]>>(`${this.apiUrl}/data/calls/grouped`, { params, context })
+      );
+
+      if (res && res.success && Array.isArray(res.data)) {
+        this.groupedCalls.set(res.data);
+      }
+    } catch (err: any) {
+      console.error('Error fetching grouped calls:', err);
+      if (!silent) {
+        this.toast.error('Calls Error', 'Could not load grouped call history.');
+      }
+    } finally {
+      this.isCallsLoading.set(false);
+    }
+  }
+
+  /**
+   * Loads SMS messages grouped into conversation threads
+   */
+  async loadGroupedMessages(silent = false): Promise<void> {
+    this.isMessagesLoading.set(true);
+    try {
+      const device = this.selectedDevice();
+      const search = this.messagesSearchTerm().trim();
+      const params: any = { device };
+      if (search) params.search = search;
+
+      const context = new HttpContext().set(SKIP_LOADER, true);
+      const res = await firstValueFrom(
+        this.http.get<ApiResponse<MessageThread[]>>(`${this.apiUrl}/data/messages/threads`, { params, context })
+      );
+
+      if (res && res.success && Array.isArray(res.data)) {
+        this.messageThreads.set(res.data);
+        if (!this.selectedThreadId() && res.data.length > 0) {
+          this.selectedThreadId.set(res.data[0].threadId);
+        }
+      }
+    } catch (err: any) {
+      console.error('Error fetching message threads:', err);
+      if (!silent) {
+        this.toast.error('Messages Error', 'Could not load message threads.');
+      }
+    } finally {
+      this.isMessagesLoading.set(false);
+    }
+  }
+
+  /**
+   * Loads chronological timeline sessions (unlocks, app swaps, screen time)
+   */
+  async loadTimelineSessions(silent = false): Promise<void> {
+    this.isTimelineLoading.set(true);
+    try {
+      const device = this.selectedDevice();
+      const context = new HttpContext().set(SKIP_LOADER, true);
+      const res = await firstValueFrom(
+        this.http.get<ApiResponse<DeviceTimelineData>>(`${this.apiUrl}/devices/${device}/timeline-sessions`, { context })
+      );
+
+      if (res && res.success && res.data) {
+        this.timelineData.set(res.data);
+      }
+    } catch (err: any) {
+      console.error('Error fetching timeline sessions:', err);
+      if (!silent) {
+        this.toast.error('Timeline Error', 'Could not load app usage timeline.');
+      }
+    } finally {
+      this.isTimelineLoading.set(false);
+    }
   }
 }

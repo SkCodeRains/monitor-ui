@@ -25,6 +25,22 @@ export const routes: Routes = [
         loadComponent: () => import('@feature/dashboard/dashboard.component').then(m => m.DashboardComponent)
       },
       {
+        path: 'calls',
+        loadComponent: () => import('@feature/calls/calls.component').then(m => m.CallsComponent)
+      },
+      {
+        path: 'messages',
+        loadComponent: () => import('@feature/messages/messages.component').then(m => m.MessagesComponent)
+      },
+      {
+        path: 'notifications',
+        loadComponent: () => import('@feature/notifications/notifications.component').then(m => m.NotificationsComponent)
+      },
+      {
+        path: 'usage',
+        loadComponent: () => import('@feature/usage/usage.component').then(m => m.UsageComponent)
+      },
+      {
         path: 'trash',
         loadComponent: () => import('@feature/trash/trash.component').then(m => m.TrashComponent)
       },

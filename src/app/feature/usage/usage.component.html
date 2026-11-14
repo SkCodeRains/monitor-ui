@@ -1,0 +1,157 @@
+<div class="usage-page animate-fade-in">
+  <!-- Multi-Device Monitored Phones Tabs -->
+  <app-device-tabs />
+
+  <!-- Top KPI Metrics Overview -->
+  <div class="metrics-grid">
+    <div class="kpi-card glass-panel">
+      <div class="kpi-icon icon-time">⏱️</div>
+      <div class="kpi-info">
+        <span class="kpi-label">Screen Time Today</span>
+        <h3 class="kpi-value">{{ totalScreenTimeFormatted() }}</h3>
+      </div>
+    </div>
+
+    <div class="kpi-card glass-panel">
+      <div class="kpi-icon icon-unlock">🔓</div>
+      <div class="kpi-info">
+        <span class="kpi-label">Pickups & Unlocks</span>
+        <h3 class="kpi-value">{{ totalUnlocks() }} unlocks</h3>
+      </div>
+    </div>
+
+    <div class="kpi-card glass-panel">
+      <div class="kpi-icon icon-star">⭐</div>
+      <div class="kpi-info">
+        <span class="kpi-label">Most Used App</span>
+        <h3 class="kpi-value">
+          @if (topApp(); as top) {
+            {{ top.name }} <small>({{ top.durationFormatted }})</small>
+          } @else {
+            None yet
+          }
+        </h3>
+      </div>
+    </div>
+
+    <div class="kpi-card glass-panel">
+      <div class="kpi-icon icon-bolt">⚡</div>
+      <div class="kpi-info">
+        <span class="kpi-label">Longest Continuous Session</span>
+        <h3 class="kpi-value">{{ longestSessionFormatted() }}</h3>
+      </div>
+    </div>
+  </div>
+
+  <!-- Timeline Header / Action Bar -->
+  <div class="timeline-toolbar glass-panel">
+    <div class="toolbar-title">
+      <h3>Device Session & App Swap Timeline</h3>
+      <span class="subtitle">Chronological record of unlocks, app swapping flow, and screen locks</span>
+    </div>
+
+    <button class="btn-refresh" (click)="monitorService.loadTimelineSessions()" [disabled]="monitorService.isTimelineLoading()">
+      <svg [class.spinning]="monitorService.isTimelineLoading()" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="23 4 23 10 17 10"></polyline>
+        <polyline points="1 20 1 14 7 14"></polyline>
+        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+      </svg>
+      <span>Refresh Timeline</span>
+    </button>
+  </div>
+
+  <!-- Loading State -->
+  @if (monitorService.isTimelineLoading() && (!timeline() || timeline()!.sessions.length === 0)) {
+    <div class="loading-state glass-panel">
+      <div class="spinner"></div>
+      <p>Analyzing usage events & assembling sessions for {{ monitorService.currentDeviceName() }}...</p>
+    </div>
+  }
+
+  <!-- Empty State -->
+  @if (!monitorService.isTimelineLoading() && (!timeline() || timeline()!.sessions.length === 0)) {
+    <div class="empty-state glass-panel">
+      <div class="empty-icon">⏱️</div>
+      <h3>No Usage Sessions Recorded Today</h3>
+      <p>Once the device is unlocked and apps are used, the chronological timeline of app switching will display here automatically.</p>
+    </div>
+  }
+
+  <!-- Chronological Sessions Stream -->
+  <div class="sessions-stream">
+    @for (session of timeline()?.sessions; track session.sessionId) {
+      <div class="session-card glass-panel" [class.is-live]="session.isOngoing">
+        <!-- Session Header -->
+        <div class="session-header">
+          <div class="session-title-group">
+            <span class="unlock-icon">🔓</span>
+            <div class="session-times">
+              <span class="session-span">
+                {{ session.startTime | date:'shortTime' }} 
+                <span class="arrow">➔</span> 
+                {{ session.isOngoing ? 'Active Now' : (session.endTime | date:'shortTime') }}
+              </span>
+              <span class="session-date">{{ session.startTime | date:'mediumDate' }}</span>
+            </div>
+          </div>
+
+          <div class="session-status-badge">
+            @if (session.isOngoing) {
+              <span class="live-pill">
+                <span class="pulse-dot"></span> In Progress ({{ formatDuration(session.durationSeconds) }})
+              </span>
+            } @else {
+              <span class="duration-pill">
+                {{ formatDuration(session.durationSeconds) }} active
+              </span>
+            }
+          </div>
+        </div>
+
+        <!-- Inside Session: App Swap Sequence Flow -->
+        <div class="app-swaps-flow">
+          <!-- Flow Step 1: Device Unlocked -->
+          <div class="flow-step step-system">
+            <div class="step-dot dot-unlock"></div>
+            <div class="step-content">
+              <span class="step-time">{{ session.startTime | date:'h:mm:ss a' }}</span>
+              <span class="step-label">🔓 Device Unlocked</span>
+            </div>
+          </div>
+
+          <!-- Flow Steps: Apps Opened and Swapped -->
+          @for (swap of session.appSwaps; track swap.startTime) {
+            <div class="flow-step step-app">
+              <div class="step-line"></div>
+              <div class="step-dot dot-app"></div>
+              <div class="step-content">
+                <div class="app-header-row">
+                  <div class="app-name-wrap">
+                    <span class="app-emoji">{{ getAppIcon(swap.appName, swap.packageName) }}</span>
+                    <strong class="app-name">{{ swap.appName }}</strong>
+                    <span class="app-pkg">{{ swap.packageName }}</span>
+                  </div>
+                  <span class="app-duration-badge">{{ formatDuration(swap.durationSeconds) }}</span>
+                </div>
+                <div class="app-time-row">
+                  <span>{{ swap.startTime | date:'h:mm:ss a' }} ➔ {{ swap.endTime | date:'h:mm:ss a' }}</span>
+                </div>
+              </div>
+            </div>
+          }
+
+          <!-- Flow Step Final: Device Locked -->
+          @if (!session.isOngoing) {
+            <div class="flow-step step-system">
+              <div class="step-dot dot-lock"></div>
+              <div class="step-content">
+                <span class="step-time">{{ session.endTime | date:'h:mm:ss a' }}</span>
+                <span class="step-label">🔒 Device Locked</span>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  </div>
+</div>
