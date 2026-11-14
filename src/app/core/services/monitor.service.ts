@@ -38,9 +38,9 @@ export class MonitorService {
 
   // Multi-Device State Signals
   readonly devices = signal<Device[]>([
-    { id: 'OTHER', deviceId: 'OTHER', name: 'Other / Vivo (Legacy)', totalCount: 0 }
+    { id: 'iqoo_i2012', deviceId: 'iqoo_i2012', name: 'Vivo I2012', totalCount: 0 }
   ]);
-  readonly selectedDevice = signal<string>('OTHER');
+  readonly selectedDevice = signal<string>('iqoo_i2012');
 
   // Daily Usage & App Screen Time History Signals
   readonly usageHistory = signal<DailyUsage[]>([]);
@@ -59,9 +59,17 @@ export class MonitorService {
   readonly messagesSelectedDate = signal<string>('');
   readonly selectedThreadId = signal<string | null>(null);
 
+  private static getTodayDateString(): string {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
   readonly timelineData = signal<DeviceTimelineData | null>(null);
   readonly isTimelineLoading = signal<boolean>(false);
-  readonly selectedTimelineDate = signal<string>(new Date().toISOString().slice(0, 10));
+  readonly selectedTimelineDate = signal<string>(MonitorService.getTodayDateString());
 
   // Server-Side Pagination State Signals
   readonly pageSize = signal<number>(100);
@@ -151,6 +159,9 @@ export class MonitorService {
       this.selectedHistoryDate.set('TODAY');
       this.loadItems();
       this.loadUsageHistory(deviceId);
+      this.loadGroupedCalls(true);
+      this.loadGroupedMessages(true);
+      this.loadTimelineSessions(true);
     }
   }
 
@@ -182,6 +193,9 @@ export class MonitorService {
               this.selectedDevice.set(bestId);
               this.loadUsageHistory(bestId);
               this.loadItems();
+              this.loadGroupedCalls(true);
+              this.loadGroupedMessages(true);
+              this.loadTimelineSessions(true);
               return;
             }
           }
@@ -778,7 +792,14 @@ export class MonitorService {
   async loadTimelineSessions(silent = false, date?: string): Promise<void> {
     this.isTimelineLoading.set(true);
     try {
-      const device = this.selectedDevice();
+      let device = this.selectedDevice();
+      if (!device || device === 'OTHER') {
+        const real = this.devices().find(d => d.id !== 'OTHER' && d.deviceId !== 'OTHER');
+        if (real) {
+          device = real.id || real.deviceId;
+          this.selectedDevice.set(device);
+        }
+      }
       const targetDate = date || this.selectedTimelineDate();
       if (date) {
         this.selectedTimelineDate.set(date);
