@@ -5,6 +5,99 @@
   padding-bottom: 3rem;
 }
 
+.date-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 12px;
+  flex-wrap: wrap;
+
+  .filter-label {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.75);
+
+    .icon {
+      font-size: 1rem;
+    }
+  }
+
+  .date-presets {
+    display: flex;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+
+    .preset-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.7);
+      padding: 0.35rem 0.8rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.12);
+        color: #fff;
+      }
+
+      &.active {
+        background: #6366f1;
+        border-color: #6366f1;
+        color: #fff;
+        box-shadow: 0 2px 6px rgba(99, 102, 241, 0.35);
+      }
+    }
+  }
+
+  .date-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-left: auto;
+
+    .date-picker-input {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 6px;
+      padding: 0.35rem 0.65rem;
+      color: #fff;
+      font-size: 0.82rem;
+      color-scheme: dark;
+      outline: none;
+      cursor: pointer;
+
+      &:focus {
+        border-color: #6366f1;
+      }
+    }
+
+    .btn-clear-date {
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #f87171;
+      border-radius: 6px;
+      width: 26px;
+      height: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 0.75rem;
+
+      &:hover {
+        background: rgba(239, 68, 68, 0.35);
+      }
+    }
+  }
+}
+
 .messages-container {
   display: flex;
   height: calc(100vh - 210px);

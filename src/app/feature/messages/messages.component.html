@@ -2,6 +2,53 @@
   <!-- Multi-Device Monitored Phones Tabs -->
   <app-device-tabs />
 
+  <!-- Messages Date Filter Bar -->
+  <div class="date-filter-bar glass-panel">
+    <div class="filter-label">
+      <span class="icon">📅</span>
+      <span>Date Filter:</span>
+    </div>
+
+    <div class="date-presets">
+      <button 
+        class="preset-btn" 
+        [class.active]="!monitorService.messagesSelectedDate()"
+        (click)="clearDateFilter()">
+        All Time
+      </button>
+      <button 
+        class="preset-btn" 
+        [class.active]="monitorService.messagesSelectedDate() === todayStr"
+        (click)="setDateFilter(todayStr)">
+        Today
+      </button>
+      <button 
+        class="preset-btn" 
+        [class.active]="monitorService.messagesSelectedDate() === getYesterdayStr()"
+        (click)="setDateFilter(getYesterdayStr())">
+        Yesterday
+      </button>
+    </div>
+
+    <div class="date-input-wrap">
+      <input 
+        type="date" 
+        [max]="todayStr"
+        [value]="monitorService.messagesSelectedDate()"
+        (change)="onDateInputChange($event)"
+        class="date-picker-input"
+        title="Filter messages by specific date"
+      />
+      <button 
+        *ngIf="monitorService.messagesSelectedDate()" 
+        class="btn-clear-date" 
+        (click)="clearDateFilter()" 
+        title="Clear Date Filter">
+        ✕
+      </button>
+    </div>
+  </div>
+
   <!-- Messages Container (Master-Detail Two-Column Layout) -->
   <div class="messages-container glass-panel">
     <!-- Left Sidebar: Conversations List -->

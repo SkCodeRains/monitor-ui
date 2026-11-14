@@ -15,6 +15,33 @@ import { MessageThread, SmsMessage } from '@model';
 export class MessagesComponent implements OnInit {
   readonly monitorService = inject(MonitorService);
 
+  readonly todayStr = new Date().toISOString().slice(0, 10);
+
+  getYesterdayStr(): string {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return d.toISOString().slice(0, 10);
+  }
+
+  setDateFilter(date: string): void {
+    this.monitorService.messagesSelectedDate.set(date);
+    this.monitorService.loadGroupedMessages(true);
+  }
+
+  clearDateFilter(): void {
+    this.monitorService.messagesSelectedDate.set('');
+    this.monitorService.loadGroupedMessages(true);
+  }
+
+  onDateInputChange(eventOrVal: any): void {
+    const val = typeof eventOrVal === 'string' ? eventOrVal : eventOrVal?.target?.value;
+    if (val) {
+      this.setDateFilter(val);
+    } else {
+      this.clearDateFilter();
+    }
+  }
+
   readonly activeThread = computed<MessageThread | null>(() => {
     const threadId = this.monitorService.selectedThreadId();
     const threads = this.monitorService.messageThreads();

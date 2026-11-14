@@ -17,6 +17,32 @@ export class CallsComponent implements OnInit {
 
   readonly expandedKeys = signal<Set<string>>(new Set<string>());
   readonly searchFilter = signal<string>('');
+  readonly todayStr = new Date().toISOString().slice(0, 10);
+
+  getYesterdayStr(): string {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return d.toISOString().slice(0, 10);
+  }
+
+  setDateFilter(date: string): void {
+    this.monitorService.callsSelectedDate.set(date);
+    this.monitorService.loadGroupedCalls(true);
+  }
+
+  clearDateFilter(): void {
+    this.monitorService.callsSelectedDate.set('');
+    this.monitorService.loadGroupedCalls(true);
+  }
+
+  onDateInputChange(eventOrVal: any): void {
+    const val = typeof eventOrVal === 'string' ? eventOrVal : eventOrVal?.target?.value;
+    if (val) {
+      this.setDateFilter(val);
+    } else {
+      this.clearDateFilter();
+    }
+  }
 
   constructor() {
     // Reload calls whenever selected device changes

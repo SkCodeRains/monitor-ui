@@ -5,6 +5,18 @@ import { DeviceTabsComponent } from '@shared/ui/device-tabs/device-tabs.componen
 import { MonitorService } from '@core/services/monitor.service';
 import { DeviceTimelineData, TimelineSessionRecord, AppSwapRecord } from '@model';
 
+export type AppCategory = 'Social' | 'Entertainment' | 'Productivity' | 'Communication' | 'System' | 'Other';
+
+export interface CategorySummary {
+  category: AppCategory;
+  name: string;
+  icon: string;
+  color: string;
+  totalDurationSeconds: number;
+  percentageOfTotal: number;
+  appsCount: number;
+}
+
 export interface AppIntervalRecord {
   startTime: number;
   endTime: number;
@@ -14,6 +26,9 @@ export interface AppIntervalRecord {
 export interface SessionAppGroup {
   packageName: string;
   appName: string;
+  category: AppCategory;
+  categoryIcon: string;
+  categoryColor: string;
   totalDurationSeconds: number;
   openCount: number;
   firstStartTime: number;
@@ -24,6 +39,9 @@ export interface SessionAppGroup {
 export interface DailyAppTreeItem {
   packageName: string;
   appName: string;
+  category: AppCategory;
+  categoryIcon: string;
+  categoryColor: string;
   totalDurationSeconds: number;
   totalSessionsCount: number;
   totalIntervalsCount: number;
@@ -35,6 +53,66 @@ export interface DailyAppTreeItem {
     endTime: number;
     durationSeconds: number;
   }[];
+}
+
+export function classifyAppCategory(appName: string, pkg: string): { category: AppCategory; icon: string; color: string } {
+  const s = `${appName} ${pkg}`.toLowerCase();
+
+  // 1. Social
+  if (
+    s.includes('instagram') || s.includes('whatsapp') || s.includes('telegram') ||
+    s.includes('snapchat') || s.includes('facebook') || s.includes('twitter') ||
+    s.includes('discord') || s.includes('reddit') || s.includes('tiktok') ||
+    s.includes('linkedin') || s.includes('threads') || s.includes('pinterest') ||
+    s.includes('messenger')
+  ) {
+    return { category: 'Social', icon: '💬', color: '#6366f1' }; // Indigo
+  }
+
+  // 2. Entertainment & Media
+  if (
+    s.includes('youtube') || s.includes('netflix') || s.includes('prime') ||
+    s.includes('spotify') || s.includes('hotstar') || s.includes('disney') ||
+    s.includes('twitch') || s.includes('music') || s.includes('video') ||
+    s.includes('media') || s.includes('vlc') || s.includes('game') ||
+    s.includes('stream') || s.includes('mx player')
+  ) {
+    return { category: 'Entertainment', icon: '🍿', color: '#ec4899' }; // Pink
+  }
+
+  // 3. Productivity & Work
+  if (
+    s.includes('chrome') || s.includes('browser') || s.includes('gmail') ||
+    s.includes('drive') || s.includes('docs') || s.includes('sheets') ||
+    s.includes('slides') || s.includes('teams') || s.includes('slack') ||
+    s.includes('outlook') || s.includes('office') || s.includes('notion') ||
+    s.includes('keep') || s.includes('notes') || s.includes('zoom') ||
+    s.includes('meet') || s.includes('calculator') || s.includes('calendar') ||
+    s.includes('word') || s.includes('excel') || s.includes('pdf')
+  ) {
+    return { category: 'Productivity', icon: '💼', color: '#0ea5e9' }; // Sky Blue
+  }
+
+  // 4. Communication
+  if (
+    s.includes('phone') || s.includes('dialer') || s.includes('contacts') ||
+    s.includes('telecom') || s.includes('sms') || s.includes('mms') ||
+    s.includes('messaging') || s.includes('truecaller') || s.includes('incallui')
+  ) {
+    return { category: 'Communication', icon: '📞', color: '#10b981' }; // Emerald
+  }
+
+  // 5. System & Tools
+  if (
+    s.includes('settings') || s.includes('camera') || s.includes('gallery') ||
+    s.includes('photos') || s.includes('files') || s.includes('clock') ||
+    s.includes('vending') || s.includes('packageinstaller') || s.includes('system') ||
+    s.includes('launcher') || s.includes('security')
+  ) {
+    return { category: 'System', icon: '⚙️', color: '#8b5cf6' }; // Violet
+  }
+
+  return { category: 'Other', icon: '📱', color: '#94a3b8' }; // Slate
 }
 
 @Component({
@@ -58,6 +136,9 @@ export class UsageComponent implements OnInit {
 
   /** Whether the top-level Daily App Tree Breakdown card is expanded */
   readonly showDailyBreakdown = signal<boolean>(true);
+
+  /** Active Category Filter for the Daily App Bar Chart: 'ALL' or specific AppCategory */
+  readonly selectedCategoryFilter = signal<AppCategory | 'ALL'>('ALL');
 
   /** Set of expanded app tree keys for session intervals: "sessionId_packageName" */
   readonly expandedSessionApps = signal<Set<string>>(new Set<string>());
@@ -155,7 +236,7 @@ export class UsageComponent implements OnInit {
 
   /**
    * Daily App Usage Tree: Groups all sessions and intervals by application.
-   * Shows total daily usage, percentage bar, and expandable session intervals.
+   * Classifies each app into categories (Social, Entertainment, Productivity, etc.)
    */
   readonly dailyAppTree = computed<DailyAppTreeItem[]>(() => {
     const data = this.timeline();
@@ -173,9 +254,13 @@ export class UsageComponent implements OnInit {
         const key = swap.packageName || swap.appName;
         let item = appMap.get(key);
         if (!item) {
+          const catInfo = classifyAppCategory(swap.appName, swap.packageName);
           item = {
             packageName: swap.packageName,
             appName: swap.appName || swap.packageName,
+            category: catInfo.category,
+            categoryIcon: catInfo.icon,
+            categoryColor: catInfo.color,
             totalDurationSeconds: 0,
             totalSessionsCount: 0,
             totalIntervalsCount: 0,
@@ -199,16 +284,76 @@ export class UsageComponent implements OnInit {
 
     const items = Array.from(appMap.values());
     for (const item of items) {
-      // Count unique sessions this app appeared in
       const sessionIds = new Set(item.intervals.map(i => i.sessionId));
       item.totalSessionsCount = sessionIds.size;
       item.percentageOfTotal = Math.min(100, Math.round((item.totalDurationSeconds / totalDaySec) * 100));
-      // Sort intervals newest first
       item.intervals.sort((a, b) => b.startTime - a.startTime);
     }
 
     // Sort by total duration descending
     return items.sort((a, b) => b.totalDurationSeconds - a.totalDurationSeconds);
+  });
+
+  /**
+   * Aggregates daily usage into Categories (Social, Productivity, Entertainment, etc.)
+   */
+  readonly categorySummaries = computed<CategorySummary[]>(() => {
+    const apps = this.dailyAppTree();
+    const data = this.timeline();
+    const totalDaySec = data?.totalScreenTimeSeconds || 1;
+
+    const catMap = new Map<AppCategory, CategorySummary>();
+    const order: AppCategory[] = ['Social', 'Entertainment', 'Productivity', 'Communication', 'System', 'Other'];
+
+    for (const c of order) {
+      let icon = '📱';
+      let color = '#94a3b8';
+      let name: string = c;
+      if (c === 'Social') { icon = '💬'; color = '#6366f1'; }
+      else if (c === 'Entertainment') { icon = '🍿'; color = '#ec4899'; }
+      else if (c === 'Productivity') { icon = '💼'; color = '#0ea5e9'; }
+      else if (c === 'Communication') { icon = '📞'; color = '#10b981'; }
+      else if (c === 'System') { icon = '⚙️'; color = '#8b5cf6'; }
+
+      catMap.set(c, {
+        category: c,
+        name,
+        icon,
+        color,
+        totalDurationSeconds: 0,
+        percentageOfTotal: 0,
+        appsCount: 0
+      });
+    }
+
+    for (const app of apps) {
+      const sum = catMap.get(app.category);
+      if (sum) {
+        sum.totalDurationSeconds += app.totalDurationSeconds;
+        sum.appsCount += 1;
+      }
+    }
+
+    const list: CategorySummary[] = [];
+    for (const c of order) {
+      const s = catMap.get(c)!;
+      if (s.totalDurationSeconds > 0) {
+        s.percentageOfTotal = Math.min(100, Math.round((s.totalDurationSeconds / totalDaySec) * 100));
+        list.push(s);
+      }
+    }
+
+    return list;
+  });
+
+  /**
+   * Filtered list of daily apps based on selected category filter pill
+   */
+  readonly filteredDailyApps = computed<DailyAppTreeItem[]>(() => {
+    const filter = this.selectedCategoryFilter();
+    const all = this.dailyAppTree();
+    if (filter === 'ALL') return all;
+    return all.filter(a => a.category === filter);
   });
 
   constructor() {
@@ -222,6 +367,10 @@ export class UsageComponent implements OnInit {
 
   ngOnInit(): void {
     this.monitorService.loadTimelineSessions();
+  }
+
+  setCategoryFilter(cat: AppCategory | 'ALL'): void {
+    this.selectedCategoryFilter.set(cat);
   }
 
   /**
@@ -240,9 +389,13 @@ export class UsageComponent implements OnInit {
       const key = swap.packageName || swap.appName;
       let grp = groupMap.get(key);
       if (!grp) {
+        const catInfo = classifyAppCategory(swap.appName, swap.packageName);
         grp = {
           packageName: swap.packageName,
           appName: swap.appName || swap.packageName,
+          category: catInfo.category,
+          categoryIcon: catInfo.icon,
+          categoryColor: catInfo.color,
           totalDurationSeconds: 0,
           openCount: 0,
           firstStartTime: swap.startTime,
@@ -262,12 +415,10 @@ export class UsageComponent implements OnInit {
       });
     }
 
-    // Sort intervals inside each app newest first
     for (const grp of groupMap.values()) {
       grp.intervals.sort((a, b) => b.startTime - a.startTime);
     }
 
-    // Sort apps in this session by duration descending
     return Array.from(groupMap.values()).sort((a, b) => b.totalDurationSeconds - a.totalDurationSeconds);
   }
 
@@ -327,8 +478,12 @@ export class UsageComponent implements OnInit {
 
   formatDuration(seconds: number): string {
     if (!seconds || seconds <= 0) return '0s';
-    const mins = Math.floor(seconds / 60);
+    const hours = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
+    if (hours > 0) {
+      return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+    }
     if (mins === 0) return `${secs}s`;
     if (secs === 0) return `${mins}m`;
     return `${mins}m ${secs}s`;

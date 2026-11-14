@@ -90,13 +90,17 @@
     </div>
   </div>
 
-  <!-- Daily App Usage Tree Summary Card -->
+  <!-- App Usage Breakdown Bar Chart & Category Analytics Card -->
   @if (dailyAppTree().length > 0) {
     <div class="daily-app-card glass-panel">
+      <!-- Section Header -->
       <div class="daily-app-header" (click)="showDailyBreakdown.set(!showDailyBreakdown())">
         <div class="title-with-pill">
-          <span class="section-icon">🌳</span>
-          <h4>Daily App Usage Breakdown (Tree)</h4>
+          <span class="section-icon">📊</span>
+          <div class="title-col">
+            <h4>App Usage Breakdown & Categories</h4>
+            <span class="section-subtitle">Visual distribution of screen time and app categories</span>
+          </div>
           <span class="count-pill">{{ dailyAppTree().length }} apps used</span>
         </div>
         <button class="btn-toggle-card" type="button">
@@ -108,27 +112,80 @@
       </div>
 
       @if (showDailyBreakdown()) {
+        <!-- 1. Category Distribution Multi-Segment Bar -->
+        <div class="category-analytics-section">
+          <div class="distribution-bar-track">
+            @for (cat of categorySummaries(); track cat.category) {
+              <div 
+                class="dist-segment" 
+                [style.width.%]="cat.percentageOfTotal" 
+                [style.background-color]="cat.color"
+                [title]="cat.name + ': ' + formatDuration(cat.totalDurationSeconds) + ' (' + cat.percentageOfTotal + '%)'">
+              </div>
+            }
+          </div>
+
+          <!-- Interactive Category Filter Pills -->
+          <div class="category-filter-pills">
+            <button 
+              class="cat-pill" 
+              [class.active]="selectedCategoryFilter() === 'ALL'"
+              (click)="setCategoryFilter('ALL')">
+              <span class="pill-dot" style="background-color: #6366f1;"></span>
+              <span>All Apps ({{ dailyAppTree().length }})</span>
+            </button>
+
+            @for (cat of categorySummaries(); track cat.category) {
+              <button 
+                class="cat-pill" 
+                [class.active]="selectedCategoryFilter() === cat.category"
+                (click)="setCategoryFilter(cat.category)">
+                <span class="pill-dot" [style.background-color]="cat.color"></span>
+                <span class="cat-icon">{{ cat.icon }}</span>
+                <span>{{ cat.name }}</span>
+                <strong class="cat-pct">{{ cat.percentageOfTotal }}%</strong>
+                <small class="cat-dur">({{ formatDuration(cat.totalDurationSeconds) }})</small>
+              </button>
+            }
+          </div>
+        </div>
+
+        <!-- 2. Breakdown Bar Chart List -->
         <div class="daily-app-tree-list">
-          @for (item of dailyAppTree(); track item.packageName) {
+          @for (item of filteredDailyApps(); track item.packageName; let idx = $index) {
             <div class="daily-tree-node" [class.is-expanded]="isDailyAppExpanded(item.packageName)">
               <div class="tree-node-row" (click)="toggleDailyApp(item.packageName)">
                 <div class="node-main-info">
+                  <span class="rank-badge">#{{ idx + 1 }}</span>
                   <span class="app-emoji">{{ getAppIcon(item.appName, item.packageName) }}</span>
                   <div class="app-meta">
                     <div class="app-names">
                       <strong class="app-title">{{ item.appName }}</strong>
+                      <span class="cat-tag" [style.border-color]="item.categoryColor" [style.color]="item.categoryColor">
+                        {{ item.categoryIcon }} {{ item.category }}
+                      </span>
                       <span class="app-pkg-sub">{{ item.packageName }}</span>
                     </div>
-                    <!-- Usage % Progress Bar -->
+
+                    <!-- Visual Breakdown Horizontal Bar -->
                     <div class="usage-bar-track">
-                      <div class="usage-bar-fill" [style.width.%]="item.percentageOfTotal"></div>
+                      <div 
+                        class="usage-bar-fill" 
+                        [style.width.%]="item.percentageOfTotal"
+                        [style.background]="'linear-gradient(90deg, ' + item.categoryColor + ', #ec4899)'">
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 <div class="node-stats">
                   <div class="stats-badges">
-                    <span class="badge-duration">{{ formatDuration(item.totalDurationSeconds) }}</span>
+                    <div class="time-and-pct">
+                      <span class="badge-duration">{{ formatDuration(item.totalDurationSeconds) }}</span>
+                      <span class="badge-pct" [style.background-color]="item.categoryColor + '33'" [style.color]="item.categoryColor">
+                        {{ item.percentageOfTotal }}%
+                      </span>
+                    </div>
                     <span class="badge-opens">{{ item.totalIntervalsCount }} open{{ item.totalIntervalsCount === 1 ? '' : 's' }} ({{ item.totalSessionsCount }} session{{ item.totalSessionsCount === 1 ? '' : 's' }})</span>
                   </div>
                   <button class="btn-arrow" type="button" [attr.aria-expanded]="isDailyAppExpanded(item.packageName)">
@@ -146,7 +203,7 @@
                   <div class="intervals-grid">
                     @for (interval of item.intervals; track interval.startTime) {
                       <div class="interval-chip">
-                        <span class="chip-dot"></span>
+                        <span class="chip-dot" [style.background-color]="item.categoryColor"></span>
                         <span class="chip-time">{{ interval.startTime | date:'shortTime' }} ➔ {{ interval.endTime | date:'shortTime' }}</span>
                         <span class="chip-duration">{{ formatDuration(interval.durationSeconds) }}</span>
                       </div>
@@ -281,6 +338,9 @@
                     <div class="app-name-wrap">
                       <span class="app-emoji">{{ getAppIcon(grp.appName, grp.packageName) }}</span>
                       <strong class="app-name">{{ grp.appName }}</strong>
+                      <span class="cat-tag-mini" [style.color]="grp.categoryColor" [style.border-color]="grp.categoryColor">
+                        {{ grp.categoryIcon }} {{ grp.category }}
+                      </span>
                       <span class="app-pkg">{{ grp.packageName }}</span>
                     </div>
 

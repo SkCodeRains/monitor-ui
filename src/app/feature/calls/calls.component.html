@@ -33,6 +33,53 @@
     </div>
   </div>
 
+  <!-- Calls Date Filter Bar -->
+  <div class="date-filter-bar glass-panel">
+    <div class="filter-label">
+      <span class="icon">📅</span>
+      <span>Date Filter:</span>
+    </div>
+
+    <div class="date-presets">
+      <button 
+        class="preset-btn" 
+        [class.active]="!monitorService.callsSelectedDate()"
+        (click)="clearDateFilter()">
+        All Time
+      </button>
+      <button 
+        class="preset-btn" 
+        [class.active]="monitorService.callsSelectedDate() === todayStr"
+        (click)="setDateFilter(todayStr)">
+        Today
+      </button>
+      <button 
+        class="preset-btn" 
+        [class.active]="monitorService.callsSelectedDate() === getYesterdayStr()"
+        (click)="setDateFilter(getYesterdayStr())">
+        Yesterday
+      </button>
+    </div>
+
+    <div class="date-input-wrap">
+      <input 
+        type="date" 
+        [max]="todayStr"
+        [value]="monitorService.callsSelectedDate()"
+        (change)="onDateInputChange($event)"
+        class="date-picker-input"
+        title="Filter by specific date"
+      />
+      <button 
+        *ngIf="monitorService.callsSelectedDate()" 
+        class="btn-clear-date" 
+        (click)="clearDateFilter()" 
+        title="Clear Date Filter">
+        ✕
+      </button>
+    </div>
+  </div>
+
   <!-- Loading State -->
   @if (monitorService.isCallsLoading() && monitorService.groupedCalls().length === 0) {
     <div class="loading-state glass-panel">

@@ -51,10 +51,12 @@ export class MonitorService {
   readonly groupedCalls = signal<GroupedCallContact[]>([]);
   readonly isCallsLoading = signal<boolean>(false);
   readonly callsSearchTerm = signal<string>('');
+  readonly callsSelectedDate = signal<string>('');
 
   readonly messageThreads = signal<MessageThread[]>([]);
   readonly isMessagesLoading = signal<boolean>(false);
   readonly messagesSearchTerm = signal<string>('');
+  readonly messagesSelectedDate = signal<string>('');
   readonly selectedThreadId = signal<string | null>(null);
 
   readonly timelineData = signal<DeviceTimelineData | null>(null);
@@ -713,8 +715,10 @@ export class MonitorService {
     try {
       const device = this.selectedDevice();
       const search = this.callsSearchTerm().trim();
+      const date = this.callsSelectedDate().trim();
       const params: any = { device };
       if (search) params.search = search;
+      if (date) params.date = date;
 
       const context = new HttpContext().set(SKIP_LOADER, true);
       const res = await firstValueFrom(
@@ -742,8 +746,10 @@ export class MonitorService {
     try {
       const device = this.selectedDevice();
       const search = this.messagesSearchTerm().trim();
+      const date = this.messagesSelectedDate().trim();
       const params: any = { device };
       if (search) params.search = search;
+      if (date) params.date = date;
 
       const context = new HttpContext().set(SKIP_LOADER, true);
       const res = await firstValueFrom(
