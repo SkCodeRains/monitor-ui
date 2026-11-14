@@ -148,6 +148,9 @@ export class UsageComponent implements OnInit {
   /** Active Category Filter for the Daily App Bar Chart: 'ALL' or specific AppCategory */
   readonly selectedCategoryFilter = signal<AppCategory | 'ALL'>('ALL');
 
+  /** Filter toggle: whether to hide transient launcher and system noise (< 10s) from timeline */
+  readonly hideSystemNoise = signal<boolean>(true);
+
   /** Set of expanded app tree keys for session intervals: "sessionId_packageName" */
   readonly expandedSessionApps = signal<Set<string>>(new Set<string>());
 
@@ -253,11 +256,13 @@ export class UsageComponent implements OnInit {
     const totalDaySec = data.totalScreenTimeSeconds || 1;
     const appMap = new Map<string, DailyAppTreeItem>();
 
+    const filterNoise = this.hideSystemNoise();
     for (const session of data.sessions) {
       for (const swap of session.appSwaps || []) {
         const pkg = (swap.packageName || '').toLowerCase();
-        const isTransient = (pkg.includes('launcher') || pkg.includes('permissioncontroller') || pkg.includes('systemui')) && swap.durationSeconds < 3;
-        if (isTransient) continue;
+        const isSystemOrLauncher = pkg.includes('launcher') || pkg.includes('permissioncontroller') || pkg.includes('systemui');
+        const minDuration = filterNoise ? 10 : 3;
+        if (isSystemOrLauncher && swap.durationSeconds < minDuration) continue;
 
         const key = swap.packageName || swap.appName;
         let item = appMap.get(key);
@@ -382,13 +387,30 @@ export class UsageComponent implements OnInit {
   }
 
   /**
+   * Helper to retrieve filtered app swaps for linear/flow view
+   */
+  getFilteredSwaps(session: TimelineSessionRecord): AppSwapRecord[] {
+    const filterNoise = this.hideSystemNoise();
+    return (session.appSwaps || []).filter(swap => {
+      const pkg = (swap.packageName || '').toLowerCase();
+      const isSystemOrLauncher = pkg.includes('launcher') || pkg.includes('permissioncontroller') || pkg.includes('systemui');
+      const minDuration = filterNoise ? 10 : 3;
+      if (isSystemOrLauncher && swap.durationSeconds < minDuration) return false;
+      return true;
+    });
+  }
+
+  /**
    * Helper to group a single session's app swaps by application (Tree Structure).
    */
   getSessionAppGroups(session: TimelineSessionRecord): SessionAppGroup[] {
+    const filterNoise = this.hideSystemNoise();
     const validSwaps = (session.appSwaps || []).filter(swap => {
       const pkg = (swap.packageName || '').toLowerCase();
-      const isTransient = (pkg.includes('launcher') || pkg.includes('permissioncontroller') || pkg.includes('systemui')) && swap.durationSeconds < 3;
-      return !isTransient;
+      const isSystemOrLauncher = pkg.includes('launcher') || pkg.includes('permissioncontroller') || pkg.includes('systemui');
+      const minDuration = filterNoise ? 10 : 3;
+      if (isSystemOrLauncher && swap.durationSeconds < minDuration) return false;
+      return true;
     });
 
     const groupMap = new Map<string, SessionAppGroup>();

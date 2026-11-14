@@ -246,6 +246,15 @@
         </button>
       </div>
 
+      <!-- Noise Filter Toggle -->
+      <button 
+        class="filter-toggle-btn" 
+        [class.active]="hideSystemNoise()" 
+        (click)="hideSystemNoise.set(!hideSystemNoise())"
+        title="Hide transient launcher & system noise from timeline">
+        <span>{{ hideSystemNoise() ? '🛡️ System Noise: Hidden' : '👁️ System Noise: Shown' }}</span>
+      </button>
+
       <!-- Quick Expand / Collapse All -->
       <div class="tree-tools" *ngIf="viewMode() === 'tree'">
         <button class="btn-tool" (click)="expandAll()" title="Expand All Tree Intervals">
@@ -391,7 +400,7 @@
 
           <!-- MODE B: Flow / Chronological Stream View -->
           @if (viewMode() === 'flow') {
-            @for (swap of session.appSwaps; track swap.startTime) {
+            @for (swap of getFilteredSwaps(session); track swap.startTime) {
               <div class="flow-step step-app">
                 <div class="step-line"></div>
                 <div class="step-dot dot-app"></div>
