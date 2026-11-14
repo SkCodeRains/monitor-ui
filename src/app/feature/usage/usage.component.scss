@@ -5,6 +5,124 @@
   padding-bottom: 3rem;
 }
 
+.date-navigator-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1.25rem;
+  border-radius: 12px;
+  flex-wrap: wrap;
+
+  .nav-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+
+    .btn-nav {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.8);
+      padding: 0.5rem 0.85rem;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+
+      &:hover:not(:disabled) {
+        background: rgba(255, 255, 255, 0.12);
+        color: #fff;
+      }
+
+      &:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+      }
+    }
+
+    .current-date-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(99, 102, 241, 0.15);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+
+      .cal-icon {
+        font-size: 1.1rem;
+      }
+
+      .date-text {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: #fff;
+      }
+
+      .date-sub {
+        font-size: 0.78rem;
+        font-family: monospace;
+        color: rgba(255, 255, 255, 0.6);
+      }
+    }
+  }
+
+  .date-picker-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+
+    .btn-today {
+      background: #6366f1;
+      color: #fff;
+      border: none;
+      padding: 0.5rem 0.9rem;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+
+      &:hover {
+        background: #4f46e5;
+      }
+    }
+
+    .custom-date-input {
+      position: relative;
+      display: flex;
+      align-items: center;
+
+      .picker-icon {
+        position: absolute;
+        left: 10px;
+        pointer-events: none;
+        color: rgba(255, 255, 255, 0.5);
+      }
+
+      .date-input {
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 8px;
+        padding: 0.45rem 0.75rem 0.45rem 2.2rem;
+        color: #fff;
+        font-size: 0.85rem;
+        color-scheme: dark;
+        outline: none;
+        cursor: pointer;
+
+        &:focus {
+          border-color: #6366f1;
+        }
+      }
+    }
+  }
+}
+
 .metrics-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));

@@ -59,6 +59,7 @@ export class MonitorService {
 
   readonly timelineData = signal<DeviceTimelineData | null>(null);
   readonly isTimelineLoading = signal<boolean>(false);
+  readonly selectedTimelineDate = signal<string>(new Date().toISOString().slice(0, 10));
 
   // Server-Side Pagination State Signals
   readonly pageSize = signal<number>(100);
@@ -768,13 +769,18 @@ export class MonitorService {
   /**
    * Loads chronological timeline sessions (unlocks, app swaps, screen time)
    */
-  async loadTimelineSessions(silent = false): Promise<void> {
+  async loadTimelineSessions(silent = false, date?: string): Promise<void> {
     this.isTimelineLoading.set(true);
     try {
       const device = this.selectedDevice();
+      const targetDate = date || this.selectedTimelineDate();
+      if (date) {
+        this.selectedTimelineDate.set(date);
+      }
+      const params: any = { date: targetDate };
       const context = new HttpContext().set(SKIP_LOADER, true);
       const res = await firstValueFrom(
-        this.http.get<ApiResponse<DeviceTimelineData>>(`${this.apiUrl}/devices/${device}/timeline-sessions`, { context })
+        this.http.get<ApiResponse<DeviceTimelineData>>(`${this.apiUrl}/devices/${device}/timeline-sessions`, { params, context })
       );
 
       if (res && res.success && res.data) {

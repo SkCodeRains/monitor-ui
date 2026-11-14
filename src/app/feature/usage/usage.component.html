@@ -2,12 +2,59 @@
   <!-- Multi-Device Monitored Phones Tabs -->
   <app-device-tabs />
 
+  <!-- Interactive Date Navigator / Calendar Bar -->
+  <div class="date-navigator-bar glass-panel">
+    <div class="nav-controls">
+      <button class="btn-nav" (click)="prevDay()" title="Previous Day">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+        <span>Previous</span>
+      </button>
+
+      <div class="current-date-badge">
+        <span class="cal-icon">📅</span>
+        <span class="date-text">{{ formattedDateLabel() }}</span>
+        <span class="date-sub" *ngIf="!isToday()">({{ selectedDate() }})</span>
+      </div>
+
+      <button class="btn-nav" (click)="nextDay()" [disabled]="isToday()" title="Next Day">
+        <span>Next</span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+      </button>
+    </div>
+
+    <div class="date-picker-wrap">
+      <button class="btn-today" *ngIf="!isToday()" (click)="goToToday()">
+        Jump to Today
+      </button>
+
+      <div class="custom-date-input">
+        <svg class="picker-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+        <input 
+          type="date" 
+          [max]="todayStr"
+          [value]="selectedDate()"
+          (change)="onDateChange($event)"
+          class="date-input"
+        />
+      </div>
+    </div>
+  </div>
+
   <!-- Top KPI Metrics Overview -->
   <div class="metrics-grid">
     <div class="kpi-card glass-panel">
       <div class="kpi-icon icon-time">⏱️</div>
       <div class="kpi-info">
-        <span class="kpi-label">Screen Time Today</span>
+        <span class="kpi-label">Screen Time ({{ isToday() ? 'Today' : formattedDateLabel() }})</span>
         <h3 class="kpi-value">{{ totalScreenTimeFormatted() }}</h3>
       </div>
     </div>
@@ -15,7 +62,7 @@
     <div class="kpi-card glass-panel">
       <div class="kpi-icon icon-unlock">🔓</div>
       <div class="kpi-info">
-        <span class="kpi-label">Pickups & Unlocks</span>
+        <span class="kpi-label">Pickups & Unlocks ({{ isToday() ? 'Today' : formattedDateLabel() }})</span>
         <h3 class="kpi-value">{{ totalUnlocks() }} unlocks</h3>
       </div>
     </div>
