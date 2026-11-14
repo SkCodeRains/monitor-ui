@@ -66,6 +66,13 @@ export interface DailyAppTreeItem {
   }[];
 }
 
+export function formatLocalDate(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export function getTimeOfDayInfo(timestamp: number): { label: string; icon: string } {
   const hour = new Date(timestamp).getHours();
   if (hour >= 5 && hour < 12) {
@@ -149,19 +156,11 @@ export function classifyAppCategory(appName: string, pkg: string): { category: A
 export class UsageComponent implements OnInit {
   readonly monitorService = inject(MonitorService);
 
-  private static getTodayDateStr(): string {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }
-
-  readonly todayStr = UsageComponent.getTodayDateStr();
+  readonly todayStr = formatLocalDate(new Date());
 
   readonly selectedDate = computed(() => this.monitorService.selectedTimelineDate());
 
-  readonly isToday = computed(() => this.selectedDate() === this.todayStr);
+  readonly isToday = computed(() => this.selectedDate() >= this.todayStr);
 
   /** View Mode: 'tree' (Tree / Grouped Apps) vs 'flow' (Linear step-by-step stream) */
   readonly viewMode = signal<'tree' | 'flow'>('tree');
@@ -185,11 +184,9 @@ export class UsageComponent implements OnInit {
     const dStr = this.selectedDate();
     if (dStr === this.todayStr) return 'Today';
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const yesterday = new Date(today);
+    const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
-    const yStr = yesterday.toISOString().slice(0, 10);
+    const yStr = formatLocalDate(yesterday);
     if (dStr === yStr) return 'Yesterday';
 
     const parts = dStr.split('-');
@@ -205,7 +202,7 @@ export class UsageComponent implements OnInit {
     const parts = current.split('-');
     const dt = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
     dt.setDate(dt.getDate() - 1);
-    const newDateStr = dt.toISOString().slice(0, 10);
+    const newDateStr = formatLocalDate(dt);
     this.monitorService.loadTimelineSessions(false, newDateStr);
   }
 
@@ -215,7 +212,7 @@ export class UsageComponent implements OnInit {
     const parts = current.split('-');
     const dt = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
     dt.setDate(dt.getDate() + 1);
-    const newDateStr = dt.toISOString().slice(0, 10);
+    const newDateStr = formatLocalDate(dt);
     this.monitorService.loadTimelineSessions(false, newDateStr);
   }
 

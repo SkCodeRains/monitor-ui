@@ -15,12 +15,19 @@ import { MessageThread, SmsMessage } from '@model';
 export class MessagesComponent implements OnInit {
   readonly monitorService = inject(MonitorService);
 
-  readonly todayStr = new Date().toISOString().slice(0, 10);
+  readonly todayStr = this.formatLocalDate(new Date());
+
+  private formatLocalDate(d: Date): string {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
 
   getYesterdayStr(): string {
     const d = new Date();
     d.setDate(d.getDate() - 1);
-    return d.toISOString().slice(0, 10);
+    return this.formatLocalDate(d);
   }
 
   setDateFilter(date: string): void {
