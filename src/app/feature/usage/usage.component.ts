@@ -21,6 +21,16 @@ export interface AppIntervalRecord {
   startTime: number;
   endTime: number;
   durationSeconds: number;
+  count?: number;
+}
+
+export interface AppUsageStreak {
+  startTime: number;
+  endTime: number;
+  durationSeconds: number;
+  openCount: number;
+  timeOfDay: string;
+  timeOfDayIcon: string;
 }
 
 export interface SessionAppGroup {
@@ -46,6 +56,7 @@ export interface DailyAppTreeItem {
   totalSessionsCount: number;
   totalIntervalsCount: number;
   percentageOfTotal: number;
+  streaks: AppUsageStreak[];
   intervals: {
     sessionId: string;
     sessionStartTime: number;
@@ -53,6 +64,19 @@ export interface DailyAppTreeItem {
     endTime: number;
     durationSeconds: number;
   }[];
+}
+
+export function getTimeOfDayInfo(timestamp: number): { label: string; icon: string } {
+  const hour = new Date(timestamp).getHours();
+  if (hour >= 5 && hour < 12) {
+    return { label: 'Morning', icon: '☀️' };
+  } else if (hour >= 12 && hour < 17) {
+    return { label: 'Afternoon', icon: '🌤️' };
+  } else if (hour >= 17 && hour < 21) {
+    return { label: 'Evening', icon: '🌆' };
+  } else {
+    return { label: 'Night', icon: '🌙' };
+  }
 }
 
 export function classifyAppCategory(appName: string, pkg: string): { category: AppCategory; icon: string; color: string } {
@@ -278,6 +302,7 @@ export class UsageComponent implements OnInit {
             totalSessionsCount: 0,
             totalIntervalsCount: 0,
             percentageOfTotal: 0,
+            streaks: [],
             intervals: []
           };
           appMap.set(key, item);
@@ -300,6 +325,31 @@ export class UsageComponent implements OnInit {
       const sessionIds = new Set(item.intervals.map(i => i.sessionId));
       item.totalSessionsCount = sessionIds.size;
       item.percentageOfTotal = Math.min(100, Math.round((item.totalDurationSeconds / totalDaySec) * 100));
+
+      // Build continuous usage streaks (gap <= 45 seconds merges into one active period)
+      const sortedIntervals = [...item.intervals].sort((a, b) => a.startTime - b.startTime);
+      const streaks: AppUsageStreak[] = [];
+
+      for (const swap of sortedIntervals) {
+        const last = streaks[streaks.length - 1];
+        if (last && (swap.startTime - last.endTime) <= 45000) {
+          last.endTime = Math.max(last.endTime, swap.endTime);
+          last.durationSeconds += swap.durationSeconds;
+          last.openCount += 1;
+        } else {
+          const tod = getTimeOfDayInfo(swap.startTime);
+          streaks.push({
+            startTime: swap.startTime,
+            endTime: swap.endTime,
+            durationSeconds: swap.durationSeconds,
+            openCount: 1,
+            timeOfDay: tod.label,
+            timeOfDayIcon: tod.icon
+          });
+        }
+      }
+
+      item.streaks = streaks.sort((a, b) => b.startTime - a.startTime);
       item.intervals.sort((a, b) => b.startTime - a.startTime);
     }
 
@@ -438,11 +488,20 @@ export class UsageComponent implements OnInit {
       grp.totalDurationSeconds += swap.durationSeconds;
       grp.openCount += 1;
       grp.lastEndTime = Math.max(grp.lastEndTime, swap.endTime);
-      grp.intervals.push({
-        startTime: swap.startTime,
-        endTime: swap.endTime,
-        durationSeconds: swap.durationSeconds
-      });
+
+      const lastInt = grp.intervals[grp.intervals.length - 1];
+      if (lastInt && (swap.startTime - lastInt.endTime) <= 45000) {
+        lastInt.endTime = Math.max(lastInt.endTime, swap.endTime);
+        lastInt.durationSeconds += swap.durationSeconds;
+        lastInt.count = (lastInt.count || 1) + 1;
+      } else {
+        grp.intervals.push({
+          startTime: swap.startTime,
+          endTime: swap.endTime,
+          durationSeconds: swap.durationSeconds,
+          count: 1
+        });
+      }
     }
 
     for (const grp of groupMap.values()) {

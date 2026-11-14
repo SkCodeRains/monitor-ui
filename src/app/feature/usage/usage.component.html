@@ -186,7 +186,7 @@
                         {{ item.percentageOfTotal }}%
                       </span>
                     </div>
-                    <span class="badge-opens">{{ item.totalIntervalsCount }} open{{ item.totalIntervalsCount === 1 ? '' : 's' }} ({{ item.totalSessionsCount }} session{{ item.totalSessionsCount === 1 ? '' : 's' }})</span>
+                    <span class="badge-opens">{{ item.streaks.length }} period{{ item.streaks.length === 1 ? '' : 's' }} ({{ item.totalSessionsCount }} session{{ item.totalSessionsCount === 1 ? '' : 's' }})</span>
                   </div>
                   <button class="btn-arrow" type="button" [attr.aria-expanded]="isDailyAppExpanded(item.packageName)">
                     <svg [class.arrow-up]="isDailyAppExpanded(item.packageName)" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -196,16 +196,48 @@
                 </div>
               </div>
 
-              <!-- Nested Sub-Tree: All Intervals for this App -->
+              <!-- Clean App Usage Periods Breakdown (Between exact times & duration) -->
               @if (isDailyAppExpanded(item.packageName)) {
                 <div class="tree-intervals-branch animate-fade-in">
-                  <div class="branch-label">Detailed usage intervals across today's sessions:</div>
-                  <div class="intervals-grid">
-                    @for (interval of item.intervals; track interval.startTime) {
-                      <div class="interval-chip">
-                        <span class="chip-dot" [style.background-color]="item.categoryColor"></span>
-                        <span class="chip-time">{{ interval.startTime | date:'shortTime' }} ➔ {{ interval.endTime | date:'shortTime' }}</span>
-                        <span class="chip-duration">{{ formatDuration(interval.durationSeconds) }}</span>
+                  <div class="branch-header-row">
+                    <span class="branch-title">⏱️ Usage Periods & Time Ranges Today:</span>
+                    <span class="branch-meta">
+                      Opened in {{ item.streaks.length }} distinct period{{ item.streaks.length === 1 ? '' : 's' }} across {{ item.totalSessionsCount }} phone unlock{{ item.totalSessionsCount === 1 ? '' : 's' }}
+                    </span>
+                  </div>
+
+                  <div class="streaks-cards-list">
+                    @for (streak of item.streaks; track streak.startTime; let sIdx = $index) {
+                      <div class="usage-streak-item">
+                        <div class="streak-period-indicator">
+                          <span class="streak-index">#{{ sIdx + 1 }}</span>
+                          <span class="tod-pill">
+                            <span class="tod-icon">{{ streak.timeOfDayIcon }}</span>
+                            <span class="tod-name">{{ streak.timeOfDay }}</span>
+                          </span>
+                        </div>
+
+                        <div class="streak-details">
+                          <div class="streak-times-bar">
+                            <span class="time-label">Between</span>
+                            <strong class="time-value">{{ streak.startTime | date:'h:mm:ss a' }}</strong>
+                            <span class="time-arrow">➔</span>
+                            <strong class="time-value">{{ streak.endTime | date:'h:mm:ss a' }}</strong>
+                          </div>
+                          <div class="streak-sub-info">
+                            @if (streak.openCount > 1) {
+                              <span>Continuous usage with {{ streak.openCount }} in-app interactions</span>
+                            } @else {
+                              <span>Quick single opening</span>
+                            }
+                          </div>
+                        </div>
+
+                        <div class="streak-badge-col">
+                          <span class="streak-duration-tag" [style.border-color]="item.categoryColor" [style.color]="item.categoryColor">
+                            {{ formatDuration(streak.durationSeconds) }}
+                          </span>
+                        </div>
                       </div>
                     }
                   </div>
@@ -355,11 +387,12 @@
 
                     <div class="app-badges-group">
                       <span class="app-duration-badge">{{ formatDuration(grp.totalDurationSeconds) }} total</span>
-                      <span class="app-count-badge" [class.multiple]="grp.openCount > 1">
-                        {{ grp.openCount }} open{{ grp.openCount === 1 ? '' : 's' }}
+                      <span class="app-count-badge" [class.multiple]="grp.intervals.length > 1">
+                        {{ grp.intervals.length }} period{{ grp.intervals.length === 1 ? '' : 's' }}
+                        <small *ngIf="grp.openCount > grp.intervals.length">({{ grp.openCount }} actions)</small>
                       </span>
                       <button 
-                        *ngIf="grp.openCount > 1" 
+                        *ngIf="grp.intervals.length > 1" 
                         class="btn-expand-tree" 
                         type="button" 
                         title="Toggle intervals">
@@ -371,14 +404,15 @@
                   </div>
 
                   <!-- Single Interval Directly Displayed if only opened once and not expanded -->
-                  @if (grp.openCount === 1 && !isSessionAppExpanded(session.sessionId, grp.packageName)) {
+                  @if (grp.intervals.length === 1 && !isSessionAppExpanded(session.sessionId, grp.packageName)) {
                     <div class="app-time-row single-interval">
-                      <span>{{ grp.intervals[0].startTime | date:'h:mm:ss a' }} ➔ {{ grp.intervals[0].endTime | date:'h:mm:ss a' }}</span>
+                      <span>Between {{ grp.intervals[0].startTime | date:'h:mm:ss a' }} ➔ {{ grp.intervals[0].endTime | date:'h:mm:ss a' }}</span>
+                      <small *ngIf="(grp.intervals[0].count || 1) > 1" class="interval-actions-chip">({{ grp.intervals[0].count }} actions)</small>
                     </div>
                   }
 
                   <!-- Nested Tree Branch: Displayed when expanded or when user toggles -->
-                  @if (isSessionAppExpanded(session.sessionId, grp.packageName) || grp.openCount > 1) {
+                  @if (isSessionAppExpanded(session.sessionId, grp.packageName) || grp.intervals.length > 1) {
                     <div class="session-tree-intervals" *ngIf="isSessionAppExpanded(session.sessionId, grp.packageName)">
                       <div class="intervals-tree-line">
                         @for (interval of grp.intervals; track interval.startTime; let idx = $index; let last = $last) {
@@ -388,6 +422,7 @@
                               {{ interval.startTime | date:'h:mm:ss a' }} ➔ {{ interval.endTime | date:'h:mm:ss a' }}
                             </span>
                             <span class="interval-dur-chip">{{ formatDuration(interval.durationSeconds) }}</span>
+                            <small *ngIf="(interval.count || 1) > 1" class="interval-actions-chip">({{ interval.count }} actions)</small>
                           </div>
                         }
                       </div>
