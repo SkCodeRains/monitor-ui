@@ -3,20 +3,34 @@
   padding: 24px 16px;
   display: flex;
   justify-content: center;
+  max-width: 100vw;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 .layout-container {
   width: 100%; 
+  max-width: 1400px;
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .content-area {
   width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 @media (max-width: 768px) {
   .main-layout {
-    padding: 12px 8px;
+    padding: 10px 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .main-layout {
+    padding: 8px 4px;
   }
 }

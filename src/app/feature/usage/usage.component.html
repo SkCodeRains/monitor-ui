@@ -377,11 +377,13 @@
                   <!-- App Group Header Row -->
                   <div class="app-header-row clickable" (click)="toggleSessionApp(session.sessionId, grp.packageName)">
                     <div class="app-name-wrap">
-                      <span class="app-emoji">{{ getAppIcon(grp.appName, grp.packageName) }}</span>
-                      <strong class="app-name">{{ grp.appName }}</strong>
-                      <span class="cat-tag-mini" [style.color]="grp.categoryColor" [style.border-color]="grp.categoryColor">
-                        {{ grp.categoryIcon }} {{ grp.category }}
-                      </span>
+                      <div class="app-identity">
+                        <span class="app-emoji">{{ getAppIcon(grp.appName, grp.packageName) }}</span>
+                        <strong class="app-name">{{ grp.appName }}</strong>
+                        <span class="cat-tag-mini" [style.color]="grp.categoryColor" [style.border-color]="grp.categoryColor">
+                          {{ grp.categoryIcon }} {{ grp.category }}
+                        </span>
+                      </div>
                       <span class="app-pkg">{{ grp.packageName }}</span>
                     </div>
 
@@ -442,8 +444,10 @@
                 <div class="step-content">
                   <div class="app-header-row">
                     <div class="app-name-wrap">
-                      <span class="app-emoji">{{ getAppIcon(swap.appName, swap.packageName) }}</span>
-                      <strong class="app-name">{{ swap.appName }}</strong>
+                      <div class="app-identity">
+                        <span class="app-emoji">{{ getAppIcon(swap.appName, swap.packageName) }}</span>
+                        <strong class="app-name">{{ swap.appName }}</strong>
+                      </div>
                       <span class="app-pkg">{{ swap.packageName }}</span>
                     </div>
                     <span class="app-duration-badge">{{ formatDuration(swap.durationSeconds) }}</span>

@@ -440,3 +440,127 @@
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+/* ==========================================================================
+   📱 Mobile Responsive Styles (@media max-width: 768px & 480px)
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  .calls-page {
+    gap: 0.85rem;
+    padding-bottom: 2rem;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  .calls-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0.75rem 0.85rem;
+    gap: 0.65rem;
+
+    .search-box {
+      min-width: unset;
+      width: 100%;
+
+      .search-input {
+        padding: 0.5rem 0.65rem 0.5rem 2.2rem;
+        font-size: 0.84rem;
+      }
+    }
+
+    .toolbar-stats {
+      width: 100%;
+      justify-content: space-between;
+
+      .stat-pill {
+        font-size: 0.78rem;
+        padding: 0.35rem 0.65rem;
+      }
+
+      .btn-refresh {
+        padding: 0.45rem 0.85rem;
+        font-size: 0.8rem;
+      }
+    }
+  }
+
+  .date-filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0.75rem 0.85rem;
+    gap: 0.55rem;
+
+    .filter-label {
+      width: 100%;
+      font-size: 0.78rem;
+    }
+
+    .date-presets {
+      width: 100%;
+      display: flex;
+      gap: 0.35rem;
+
+      .preset-btn {
+        flex: 1;
+        text-align: center;
+        padding: 0.35rem 0.45rem;
+        font-size: 0.74rem;
+      }
+    }
+
+    .date-input-wrap {
+      width: 100%;
+
+      .date-picker-input {
+        width: 100%;
+        padding: 0.35rem 0.6rem;
+        font-size: 0.78rem;
+      }
+    }
+  }
+
+  .contact-call-card {
+    padding: 0.85rem 0.75rem;
+
+    .card-header-row {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.6rem;
+
+      .contact-identity {
+        width: 100%;
+      }
+
+      .contact-badges {
+        width: 100%;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+      }
+    }
+
+    .call-history-section {
+      padding: 0.65rem;
+
+      .history-item {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.35rem;
+      }
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .calls-toolbar {
+    padding: 0.65rem;
+  }
+
+  .date-filter-bar {
+    padding: 0.65rem;
+  }
+
+  .contact-call-card {
+    padding: 0.75rem 0.65rem;
+  }
+}
